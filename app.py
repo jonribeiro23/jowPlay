@@ -31,7 +31,10 @@ class App:
         self.url = tk.StringVar()
         self.dest = tk.StringVar(value=str(Path.home() / "Downloads"))
         self.format_label = tk.StringVar(value=core.AUDIO_FORMATS[0].label)
-        self.status = tk.StringVar(value="Cole a URL de um vídeo do YouTube para começar.")
+        self.title = tk.StringVar()
+        self.author = tk.StringVar()
+        self.cover = tk.StringVar()
+        self.status =tk.StringVar(value="Cole a URL de um vídeo do YouTube para começar.")
 
         root.title(APP_TITLE)
         root.iconbitmap(RESOURCES / "icon.ico")
@@ -67,16 +70,34 @@ class App:
         self.browse_button = ttk.Button(frame, text="Procurar...", command=self._choose_folder)
         self.browse_button.grid(row=5, column=1, padx=(8, 0), pady=(2, 12))
 
+        details = ttk.LabelFrame(frame, text="Informações do áudio (opcional)", padding=10)
+        details.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        details.columnconfigure(0, weight=1)
+
+        ttk.Label(details, text="Nome (vazio: título do vídeo)").grid(row=0, column=0, columnspan=2, sticky="w")
+        self.title_entry = ttk.Entry(details, textvariable=self.title)
+        self.title_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(2, 8))
+
+        ttk.Label(details, text="Autor (vazio: sem autor)").grid(row=2, column=0, columnspan=2, sticky="w")
+        self.author_entry = ttk.Entry(details, textvariable=self.author)
+        self.author_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 8))
+
+        ttk.Label(details, text="Imagem de capa (vazio: imagem padrão)").grid(row=4, column=0, columnspan=2, sticky="w")
+        self.cover_entry = ttk.Entry(details, textvariable=self.cover)
+        self.cover_entry.grid(row=5, column=0, sticky="ew", pady=(2, 0))
+        self.cover_button = ttk.Button(details, text="Procurar...", command=self._choose_cover)
+        self.cover_button.grid(row=5, column=1, padx=(8, 0), pady=(2, 0))
+
         self.progress = ttk.Progressbar(frame, maximum=100)
-        self.progress.grid(row=6, column=0, columnspan=2, sticky="ew")
+        self.progress.grid(row=7, column=0, columnspan=2, sticky="ew")
         self.status_label = ttk.Label(frame, textvariable=self.status)
-        self.status_label.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(6, 12))
+        self.status_label.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(6, 12))
         self.status_label.bind(
             "<Configure>", lambda event: self.status_label.configure(wraplength=event.width)
         )
 
         buttons = ttk.Frame(frame)
-        buttons.grid(row=8, column=0, columnspan=2, sticky="e")
+        buttons.grid(row=9, column=0, columnspan=2, sticky="e")
         self.open_button = ttk.Button(
             buttons, text="Mostrar arquivo", command=self._show_file, state="disabled"
         )
@@ -85,7 +106,8 @@ class App:
         self.main_button.grid(row=0, column=1)
 
         self.url_entry.bind("<Return>", self._on_enter)
-        self.dest_entry.bind("<Return>", self._on_enter)
+        for entry in (self.dest_entry, self.title_entry, self.author_entry, self.cover_entry):
+            entry.bind("<Return>", self._on_enter)
         self.url_entry.focus_set()
 
     def _paste_url(self) -> None:
@@ -98,6 +120,14 @@ class App:
         folder = filedialog.askdirectory(initialdir=self.dest.get(), title="Salvar áudio em")
         if folder:
             self.dest.set(str(Path(folder)))
+
+    def _choose_cover(self) -> None:
+        image = filedialog.askopenfilename(
+            title="Escolher imagem de capa",
+            filetypes=[("Imagens", "*.jpg *.jpeg *.png *.webp *.bmp *.gif"), ("Todos os arquivos", "*.*")],
+        )
+        if image:
+            self.cover.set(str(Path(image)))
 
     def _show_file(self) -> None:
         if self.saved_file and self.saved_file.exists():
@@ -128,16 +158,22 @@ class App:
             return
 
         audio_format = next(f for f in core.AUDIO_FORMATS if f.label == self.format_label.get())
+        cover = self.cover.get().strip().strip('"')  # "Copiar como caminho" inclui aspas.
+        metadata = core.AudioMetadata(
+            title=self.title.get().strip(),
+            author=self.author.get().strip(),
+            cover=Path(cover) if cover else None,
+        )
         self.cancel.clear()
         self.saved_file = None
         self._set_working(True)
         self._set_progress(core.Progress("Iniciando..."))
-        threading.Thread(target=self._worker, args=(url, dest, audio_format), daemon=True).start()
+        threading.Thread(target=self._worker, args=(url, dest, audio_format, metadata), daemon=True).start()
 
-    def _worker(self, url: str, dest: Path, audio_format: core.AudioFormat) -> None:
+    def _worker(self, url: str, dest: Path, audio_format: core.AudioFormat, metadata: core.AudioMetadata) -> None:
         try:
             path = core.extract_audio(
-                url, dest, audio_format, lambda p: self.events.put(("progress", p)), self.cancel
+                url, dest, audio_format, lambda p: self.events.put(("progress", p)), self.cancel, metadata
             )
             self.events.put(("done", path))
         except core.ExtractionCancelled:
@@ -165,6 +201,9 @@ class App:
         self._set_working(False)
         if kind == "done":
             self.saved_file = value
+            # Essas informações são de um vídeo só; não podem ir para o próximo sem querer.
+            for field in (self.title, self.author, self.cover):
+                field.set("")
             self.open_button.configure(state="normal")
             self._finish_progress(100)
             self._set_status(f"Pronto! Áudio salvo em:\n{value}", COLOR_SUCCESS)
@@ -196,7 +235,16 @@ class App:
     def _set_working(self, working: bool) -> None:
         self.working = working
         state = "disabled" if working else "normal"
-        for widget in (self.url_entry, self.dest_entry, self.paste_button, self.browse_button):
+        for widget in (
+            self.url_entry,
+            self.dest_entry,
+            self.paste_button,
+            self.browse_button,
+            self.title_entry,
+            self.author_entry,
+            self.cover_entry,
+            self.cover_button,
+        ):
             widget.configure(state=state)
         self.format_box.configure(state="disabled" if working else "readonly")
         self.main_button.configure(text="Cancelar" if working else "Extrair áudio", state="normal")

@@ -35,10 +35,12 @@ class FakeYoutubeDL:
         (Path(self.options["paths"]["home"]) / "video.mp3").write_bytes(b"audio")
 
 
-def run_extraction(dest, *, infos=None, on_download=None, cancel=None):
+def run_extraction(dest, *, infos=None, on_download=None, cancel=None, metadata=core.AudioMetadata()):
     fake = type("Fake", (FakeYoutubeDL,), {"infos": infos or [{"title": "video"}], "on_download": on_download})
     with mock.patch.object(core.yt_dlp, "YoutubeDL", fake), mock.patch.object(core, "find_ffmpeg", lambda: "ffmpeg"):
-        return core.extract_audio("https://youtu.be/x", dest, MP3, lambda _: None, cancel or threading.Event())
+        return core.extract_audio(
+            "https://youtu.be/x", dest, MP3, lambda _: None, cancel or threading.Event(), metadata
+        )
 
 
 class UrlTests(unittest.TestCase):
@@ -69,6 +71,35 @@ class ExtractionTests(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.dest = Path(temp.name)
+        # O áudio falso não é um arquivo válido; os gravadores reais estão em test_tags.py.
+        patcher = mock.patch.object(core.tags, "write_tags")
+        self.write_tags = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_metadata_defaults_to_video_title_and_no_author(self):
+        run_extraction(self.dest, infos=[{"title": "Título do vídeo"}])
+        _, title, author, cover = self.write_tags.call_args.args
+        self.assertEqual((title, author), ("Título do vídeo", ""))
+        self.assertEqual(cover, core.tags.load_cover(None))
+
+    def test_user_metadata_replaces_defaults(self):
+        run_extraction(
+            self.dest,
+            infos=[{"title": "Título do vídeo"}],
+            metadata=core.AudioMetadata(title="Meu nome", author="Eu"),
+        )
+        _, title, author, _ = self.write_tags.call_args.args
+        self.assertEqual((title, author), ("Meu nome", "Eu"))
+
+    def test_invalid_cover_fails_before_downloading(self):
+        download = mock.Mock()
+        with self.assertRaisesRegex(core.ExtractionError, "capa"):
+            run_extraction(
+                self.dest,
+                on_download=download,
+                metadata=core.AudioMetadata(cover=self.dest / "nao-existe.png"),
+            )
+        download.assert_not_called()
 
     def test_saves_file_in_destination(self):
         path = run_extraction(self.dest)

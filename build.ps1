@@ -20,6 +20,7 @@ $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
 & $python -m PyInstaller --noconfirm --clean --windowed --name ytDown `
     --icon icon.ico `
     --add-data "icon.ico;." `
+    --add-data "default_cover.jpg;." `
     --add-binary "$ffmpeg;ffmpeg" `
     app.py
 if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o executável." }

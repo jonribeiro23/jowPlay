@@ -12,7 +12,10 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import yt_dlp
+from mutagen import MutagenError
 from yt_dlp.utils import DownloadCancelled, DownloadError
+
+import tags
 
 YOUTUBE_HOSTS = {
     "youtube.com",
@@ -39,6 +42,15 @@ AUDIO_FORMATS = (
     AudioFormat("FLAC (sem perda adicional)", "flac", "flac"),
     AudioFormat("WAV (sem compressão)", "wav", "wav"),
 )
+
+
+@dataclass(frozen=True)
+class AudioMetadata:
+    """Dados escolhidos pelo usuário. Vazio significa usar o valor padrão."""
+
+    title: str = ""  # Padrão: título do vídeo.
+    author: str = ""  # Padrão: sem autor.
+    cover: Path | None = None  # Padrão: tags.DEFAULT_COVER.
 
 
 @dataclass(frozen=True)
@@ -106,6 +118,7 @@ def extract_audio(
     audio_format: AudioFormat,
     on_progress: Callable[[Progress], None],
     cancel: threading.Event,
+    metadata: AudioMetadata = AudioMetadata(),
 ) -> Path:
     """Baixa o áudio do vídeo, converte e devolve o caminho do arquivo salvo.
 
@@ -115,6 +128,12 @@ def extract_audio(
     ffmpeg = find_ffmpeg()
     if ffmpeg is None:
         raise ExtractionError("O ffmpeg não foi encontrado neste computador.")
+
+    # Lê a capa antes de baixar: uma imagem inválida deve falhar logo no início.
+    try:
+        cover = tags.load_cover(metadata.cover)
+    except tags.InvalidCover as exc:
+        raise ExtractionError(str(exc)) from exc
 
     def progress_hook(status: dict) -> None:
         if cancel.is_set():
@@ -179,6 +198,13 @@ def extract_audio(
         produced = sorted(temp_dir.glob(f"*.{audio_format.extension}"))
         if not produced:
             raise ExtractionError("A conversão terminou, mas o arquivo de áudio não foi gerado.")
+
+        on_progress(Progress("Gravando nome, autor e capa..."))
+        title = metadata.title or info.get("title") or produced[0].stem
+        try:
+            tags.write_tags(produced[0], title, metadata.author, cover)
+        except (MutagenError, OSError) as exc:
+            raise ExtractionError(f"Não foi possível gravar os metadados: {exc}") from exc
 
         on_progress(Progress("Salvando..."))
         try:
