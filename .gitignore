@@ -1,0 +1,7 @@
+# Arquivos gerados: o app pronto é publicado nos Releases do GitHub, não no repositório.
+dist/
+build/
+*.spec
+.venv/
+__pycache__/
+*.zip
