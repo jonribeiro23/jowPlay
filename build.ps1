@@ -29,4 +29,17 @@ $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
     app.py
 if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o executável." }
 
+# O ffmpeg embutido é GPL: a licença e a indicação do código-fonte acompanham o app.
+$ffmpegRoot = Split-Path (Split-Path $ffmpeg)
+$licenses = "dist\ytDown\licencas\ffmpeg"
+New-Item -ItemType Directory -Force $licenses | Out-Null
+foreach ($file in "LICENSE", "README.txt") {
+    $source = Join-Path $ffmpegRoot $file
+    if (Test-Path $source) {
+        Copy-Item $source (Join-Path $licenses $(if ($file -eq "LICENSE") { "LICENSE.txt" } else { $file }))
+    } else {
+        Write-Warning "Não encontrei $source; inclua a licença do ffmpeg manualmente antes de distribuir."
+    }
+}
+
 Write-Host "Pronto: dist\ytDown\ytDown.exe"

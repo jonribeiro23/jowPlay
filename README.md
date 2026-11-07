@@ -104,6 +104,20 @@ O APK é assinado com a chave de depuração deste computador. Isso basta para u
 
 O HTTP usa a porta 47821. O código muda após cada pareamento e após 5 tentativas erradas.
 
+## Publicar uma nova versão
+
+O app pronto não fica no repositório (o `ffmpeg.exe` tem mais de 100 MB). Ele é publicado como anexo de um Release do GitHub:
+
+1. Feche o ytDown e gere o app: `build.ps1` e, se o app do celular mudou, `build_android.ps1`.
+2. Compacte: `Compress-Archive dist\ytDown dist\ytDown-windows.zip -Force`.
+3. Publique: `gh release create vX.Y dist\ytDown-windows.zip dist\ytDown-celular.apk --title "ytDown X.Y"`.
+
+## Licenças de terceiros
+
+O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `build.ps1` copia para `dist\ytDown\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
+
+Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mutagen](https://github.com/quodlibet/mutagen) (GPLv2+), [Pillow](https://python-pillow.org) (licença MIT-CMU) e Python (licença PSF).
+
 ## Uso responsável
 
 Baixe apenas conteúdo que você tem direito de usar. Os Termos de Serviço do YouTube e as leis de direitos autorais continuam valendo.
