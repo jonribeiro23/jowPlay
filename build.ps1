@@ -1,4 +1,4 @@
-# Gera dist\ytDown\ytDown.exe usando a versão mais recente do yt-dlp.
+﻿# Gera dist\ytDown\ytDown.exe usando a versão mais recente do yt-dlp.
 # Uso: powershell -ExecutionPolicy Bypass -File build.ps1
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -14,6 +14,10 @@ if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar as dependências." }
 
 & $python -m unittest
 if ($LASTEXITCODE -ne 0) { throw "Os testes falharam." }
+
+# Com o app aberto, o PyInstaller apagaria parte de dist\ytDown e só então falharia.
+$running = Get-Process ytDown -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$PSScriptRoot\dist\*" }
+if ($running) { throw "Feche o ytDown antes de gerar o executável: ele está aberto a partir da pasta dist." }
 
 $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
 

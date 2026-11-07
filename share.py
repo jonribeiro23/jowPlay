@@ -16,6 +16,7 @@ import json
 import os
 import secrets
 import socket
+import socketserver
 import threading
 import time
 from collections.abc import Callable
@@ -227,6 +228,12 @@ class _HttpServer(ThreadingHTTPServer):
 
     def handle_error(self, request, client_address) -> None:
         pass  # Conexões interrompidas são normais; sys.stderr é None no app com janela.
+
+    def server_bind(self) -> None:
+        # O HTTPServer padrão faz aqui uma consulta de DNS reversa (socket.getfqdn) cujo
+        # resultado nunca é usado; ela travava a janela por cerca de 1 s ou mais.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 class ShareServer:

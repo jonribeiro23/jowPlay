@@ -69,12 +69,40 @@ class ExtractionCancelled(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class BatchResult:
+    """Resultado de um vídeo da fila: salvo (`path`), com falha (`error`) ou cancelado."""
+
+    url: str
+    path: Path | None = None
+    error: str | None = None
+    cancelled: bool = False
+
+
 def is_youtube_url(url: str) -> bool:
     try:
         parsed = urlparse(url.strip())
         return parsed.scheme in ("http", "https") and parsed.hostname in YOUTUBE_HOSTS
     except ValueError:
         return False
+
+
+def parse_url_list(text: str) -> tuple[list[str], list[int]]:
+    """Lê uma URL por linha. Devolve (URLs sem repetição, números das linhas inválidas).
+
+    Linhas em branco são ignoradas; a numeração das linhas começa em 1.
+    """
+    urls: list[str] = []
+    invalid: list[int] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        url = line.strip()
+        if not url:
+            continue
+        if not is_youtube_url(url):
+            invalid.append(number)
+        elif url not in urls:
+            urls.append(url)
+    return urls, invalid
 
 
 def unique_path(path: Path) -> Path:
@@ -214,3 +242,42 @@ def extract_audio(
         except OSError as exc:
             raise ExtractionError(f"Não foi possível salvar em {dest_dir}: {exc}") from exc
         return target
+
+
+def extract_batch(
+    urls: list[str],
+    dest_dir: Path,
+    audio_format: AudioFormat,
+    metadata: AudioMetadata,
+    on_progress: Callable[[int, Progress], None],
+    on_result: Callable[[int, BatchResult], None],
+    cancel: threading.Event,
+) -> list[BatchResult]:
+    """Extrai os vídeos um de cada vez. Uma falha não interrompe os próximos;
+    o cancelamento interrompe o vídeo atual e marca os restantes como cancelados.
+    """
+    # Uma capa inválida faria todos os vídeos falharem; melhor avisar uma vez só.
+    try:
+        tags.load_cover(metadata.cover)
+    except tags.InvalidCover as exc:
+        raise ExtractionError(str(exc)) from exc
+
+    results = []
+    for index, url in enumerate(urls):
+        if cancel.is_set():
+            result = BatchResult(url, cancelled=True)
+        else:
+            try:
+                path = extract_audio(
+                    url, dest_dir, audio_format, lambda p, i=index: on_progress(i, p), cancel, metadata
+                )
+                result = BatchResult(url, path=path)
+            except ExtractionCancelled:
+                result = BatchResult(url, cancelled=True)
+            except ExtractionError as exc:
+                result = BatchResult(url, error=str(exc))
+            except Exception as exc:  # Um erro inesperado em um vídeo não deve parar a fila.
+                result = BatchResult(url, error=f"Erro inesperado: {exc}")
+        results.append(result)
+        on_result(index, result)
+    return results

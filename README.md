@@ -5,11 +5,21 @@ Aplicativo para Windows 10 e 11 que extrai o áudio de um vídeo do YouTube e o 
 ## Como usar
 
 1. Abra `dist\ytDown\ytDown.exe`.
-2. Cole a URL do vídeo.
+2. Cole a URL do vídeo. Para extrair vários de uma vez, coloque uma URL por linha.
 3. Escolha o formato (MP3, M4A, FLAC ou WAV) e a pasta de destino.
 4. Clique em **Extrair áudio**.
 
 O arquivo recebe o título do vídeo. Se já existir um arquivo com esse nome, o novo será salvo como `Título (1).mp3`, sem substituir o anterior.
+
+### Vários vídeos de uma vez
+
+Coloque uma URL por linha na caixa de URLs; o botão **Colar** acrescenta o que está na área de transferência ao fim da lista. Enter pula de linha, e **Ctrl+Enter** inicia a extração.
+
+- Os vídeos são extraídos um de cada vez, na ordem da lista. Linhas em branco e URLs repetidas são ignoradas.
+- Se algum vídeo falhar, os outros continuam. A lista mostra a situação de cada vídeo, e o resumo no fim explica cada falha.
+- **Cancelar** interrompe o vídeo atual e os que ainda não começaram. Os áudios já salvos continuam na pasta.
+- Com mais de um vídeo, o campo **Nome** fica desativado e cada áudio recebe o título do próprio vídeo. **Autor** e **Imagem de capa** valem para todos, o que é útil para um álbum.
+- **Enviar para o celular** envia todos os áudios salvos da última extração.
 
 ### Nome, autor e capa
 

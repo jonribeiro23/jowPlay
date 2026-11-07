@@ -145,5 +145,94 @@ class ExtractionTests(unittest.TestCase):
                 core.extract_audio("https://youtu.be/x", self.dest, MP3, lambda _: None, threading.Event())
 
 
+class UrlListTests(unittest.TestCase):
+    def test_reads_one_url_per_line_ignoring_blanks_and_spaces(self):
+        text = "  https://youtu.be/a  \n\n\thttps://www.youtube.com/watch?v=b\n   \n"
+        self.assertEqual(
+            core.parse_url_list(text), (["https://youtu.be/a", "https://www.youtube.com/watch?v=b"], [])
+        )
+
+    def test_repeated_urls_are_extracted_once(self):
+        text = "https://youtu.be/a\nhttps://youtu.be/b\nhttps://youtu.be/a"
+        self.assertEqual(core.parse_url_list(text), (["https://youtu.be/a", "https://youtu.be/b"], []))
+
+    def test_reports_the_line_numbers_of_invalid_urls(self):
+        text = "https://youtu.be/a\nisto não é url\n\nhttps://example.com/v"
+        self.assertEqual(core.parse_url_list(text), (["https://youtu.be/a"], [2, 4]))
+
+    def test_empty_text(self):
+        self.assertEqual(core.parse_url_list("  \n \n"), ([], []))
+
+
+class BatchTests(unittest.TestCase):
+    """extract_batch com extract_audio simulado: só a lógica da fila é testada aqui."""
+
+    def run_batch(self, outcomes, cancel=None, metadata=core.AudioMetadata()):
+        """`outcomes` diz o que cada vídeo faz: um nome de arquivo, uma exceção ou uma função."""
+        cancel = cancel or threading.Event()
+        calls, progress, reported = [], [], []
+
+        def fake_extract(url, dest, fmt, on_progress, cancel_event, meta):
+            calls.append((url, meta))
+            on_progress(core.Progress("Baixando...", 50))
+            outcome = outcomes[url]
+            if callable(outcome):
+                outcome = outcome()
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return Path(outcome)
+
+        with mock.patch.object(core, "extract_audio", fake_extract):
+            results = core.extract_batch(
+                list(outcomes),
+                Path("destino"),
+                MP3,
+                metadata,
+                on_progress=lambda i, p: progress.append((i, p.message)),
+                on_result=lambda i, r: reported.append((i, r)),
+                cancel=cancel,
+            )
+        return results, calls, progress, reported
+
+    def test_extracts_every_url_in_order(self):
+        results, calls, progress, reported = self.run_batch({"u1": "a.mp3", "u2": "b.mp3"})
+        self.assertEqual([r.path for r in results], [Path("a.mp3"), Path("b.mp3")])
+        self.assertEqual([url for url, _ in calls], ["u1", "u2"])
+        self.assertEqual(progress, [(0, "Baixando..."), (1, "Baixando...")])
+        self.assertEqual([i for i, _ in reported], [0, 1])
+
+    def test_a_failure_does_not_stop_the_rest(self):
+        results, _, _, _ = self.run_batch(
+            {"u1": core.ExtractionError("indisponível"), "u2": RuntimeError("estranho"), "u3": "c.mp3"}
+        )
+        self.assertEqual(results[0].error, "indisponível")
+        self.assertIn("estranho", results[1].error)
+        self.assertEqual(results[2].path, Path("c.mp3"))
+
+    def test_cancel_stops_current_and_marks_the_rest(self):
+        cancel = threading.Event()
+
+        def cancelled_while_downloading():
+            cancel.set()
+            return core.ExtractionCancelled()
+
+        results, calls, _, reported = self.run_batch(
+            {"u1": "a.mp3", "u2": cancelled_while_downloading, "u3": "c.mp3"}, cancel=cancel
+        )
+        self.assertEqual(results[0].path, Path("a.mp3"))
+        self.assertTrue(results[1].cancelled and results[2].cancelled)
+        self.assertEqual([url for url, _ in calls], ["u1", "u2"])  # u3 nem começou.
+        self.assertEqual(len(reported), 3)
+
+    def test_same_author_and_cover_go_to_every_video(self):
+        metadata = core.AudioMetadata(author="Banda", cover=None)
+        _, calls, _, _ = self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=metadata)
+        self.assertEqual([meta for _, meta in calls], [metadata, metadata])
+
+    def test_invalid_cover_fails_once_before_any_download(self):
+        with self.assertRaisesRegex(core.ExtractionError, "capa"):
+            self.run_batch({"u1": "a.mp3"}, metadata=core.AudioMetadata(cover=Path("nao-existe.png")))
+
+
 if __name__ == "__main__":
     unittest.main()

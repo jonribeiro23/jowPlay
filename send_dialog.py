@@ -26,7 +26,11 @@ class SendDialog(tk.Toplevel):
         self.address = tk.StringVar()
         self._build_layout()
 
-        self.server.start()  # ShareError é tratado por quem abre a janela.
+        try:
+            self.server.start()
+        except share.ShareError:
+            self.destroy()  # Sem servidor, a janela ficaria vazia e sem utilidade.
+            raise  # Quem abre a janela mostra a mensagem de erro.
         self.address.set(
             "Se o celular não encontrar o PC, digite este endereço no app: "
             f"{share.local_address()}:{self.server.port}"

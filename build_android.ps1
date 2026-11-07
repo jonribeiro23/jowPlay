@@ -1,4 +1,4 @@
-# Gera dist\ytDown-celular.apk. Precisa do JDK 17 e do Android SDK em %LOCALAPPDATA%\Android.
+﻿# Gera dist\ytDown-celular.apk. Precisa do JDK 17 e do Android SDK em %LOCALAPPDATA%\Android.
 # Uso: powershell -ExecutionPolicy Bypass -File build_android.ps1
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "android")

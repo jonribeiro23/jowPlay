@@ -201,6 +201,13 @@ class ShareServerTests(unittest.TestCase):
             connection.request("GET", "/api/files", headers=headers)
             connection.getresponse().read()
 
+    def test_start_does_not_do_a_slow_reverse_dns_lookup(self):
+        def slow_lookup(*_):
+            raise AssertionError("getfqdn não deveria ser chamado")
+
+        with mock.patch.object(socket, "getfqdn", slow_lookup):
+            self.start_server()
+
     def test_busy_port_gives_a_readable_error(self):
         other = share.ShareServer(store_path=self.store)
         with self.assertRaises(share.ShareError):
