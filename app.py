@@ -12,6 +12,8 @@ from pathlib import Path
 from tkinter import filedialog, ttk
 
 import core
+import share
+from send_dialog import SendDialog
 
 APP_TITLE = "ytDown - Extrator de Áudio"
 COLOR_ERROR = "#b00020"
@@ -27,6 +29,7 @@ class App:
         self.working = False
         self.closing = False
         self.saved_file: Path | None = None
+        self.send_dialog: SendDialog | None = None
 
         self.url = tk.StringVar()
         self.dest = tk.StringVar(value=str(Path.home() / "Downloads"))
@@ -37,7 +40,7 @@ class App:
         self.status =tk.StringVar(value="Cole a URL de um vídeo do YouTube para começar.")
 
         root.title(APP_TITLE)
-        root.iconbitmap(RESOURCES / "icon.ico")
+        root.iconbitmap(default=str(RESOURCES / "icon.ico"))  # Vale também para as outras janelas.
         root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_layout()
         root.after(100, self._poll_events)
@@ -102,8 +105,12 @@ class App:
             buttons, text="Mostrar arquivo", command=self._show_file, state="disabled"
         )
         self.open_button.grid(row=0, column=0, padx=(0, 8))
+        self.send_button = ttk.Button(
+            buttons, text="Enviar para o celular", command=self._send_to_phone, state="disabled"
+        )
+        self.send_button.grid(row=0, column=1, padx=(0, 8))
         self.main_button = ttk.Button(buttons, text="Extrair áudio", command=self._on_main_button)
-        self.main_button.grid(row=0, column=1)
+        self.main_button.grid(row=0, column=2)
 
         self.url_entry.bind("<Return>", self._on_enter)
         for entry in (self.dest_entry, self.title_entry, self.author_entry, self.cover_entry):
@@ -132,6 +139,20 @@ class App:
     def _show_file(self) -> None:
         if self.saved_file and self.saved_file.exists():
             subprocess.Popen(f'explorer /select,"{self.saved_file}"')
+
+    def _send_to_phone(self) -> None:
+        if not self.saved_file:
+            return
+        if self.send_dialog is None:
+            try:
+                self.send_dialog = SendDialog(self.root, on_closed=self._on_send_dialog_closed)
+            except share.ShareError as exc:
+                self._set_status(str(exc), COLOR_ERROR)
+                return
+        self.send_dialog.add(self.saved_file)
+
+    def _on_send_dialog_closed(self) -> None:
+        self.send_dialog = None
 
     def _on_enter(self, _event: tk.Event) -> None:
         if not self.working:
@@ -205,6 +226,7 @@ class App:
             for field in (self.title, self.author, self.cover):
                 field.set("")
             self.open_button.configure(state="normal")
+            self.send_button.configure(state="normal")
             self._finish_progress(100)
             self._set_status(f"Pronto! Áudio salvo em:\n{value}", COLOR_SUCCESS)
         elif kind == "cancelled":
@@ -250,8 +272,11 @@ class App:
         self.main_button.configure(text="Cancelar" if working else "Extrair áudio", state="normal")
         if working:
             self.open_button.configure(state="disabled")
+            self.send_button.configure(state="disabled")
 
     def _on_close(self) -> None:
+        if self.send_dialog:
+            self.send_dialog.close()
         if not self.working:
             self.root.destroy()
             return
