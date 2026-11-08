@@ -61,6 +61,48 @@ class MetadataReader(Protocol):
         """
 
 
+class LibraryStorage(Protocol):
+    """Os arquivos da pasta da biblioteca. Caminhos relativos usam "/" como separador.
+
+    Nenhuma operação sobrescreve um arquivo existente: em caso de colisão, o nome
+    ganha " (1)", " (2)"... e o caminho realmente usado é devolvido.
+    """
+
+    @property
+    def root(self) -> Path: ...
+
+    def absolute(self, rel_path: str) -> Path: ...
+
+    def exists(self, rel_path: str) -> bool: ...
+
+    def max_relative_length(self) -> int:
+        """Quantos caracteres um caminho relativo pode ter para o caminho completo caber no Windows."""
+
+    def place(self, source: Path, rel_path: str) -> str:
+        """Move um arquivo novo para a biblioteca. Falha com LibraryError."""
+
+    def move(self, rel_path: str, new_rel_path: str) -> str:
+        """Move um arquivo da biblioteca e apaga as pastas que ficarem vazias. Falha com LibraryError."""
+
+    def trash(self, rel_path: str) -> None:
+        """Envia o arquivo para a Lixeira e apaga as pastas que ficarem vazias. Falha com LibraryError."""
+
+    def relocate(self, new_root: Path, on_progress: Callable[[int, int], None]) -> dict[str, str]:
+        """Move a biblioteca inteira para `new_root`, informando (movidos, total).
+
+        Devolve {caminho antigo: caminho novo} dos arquivos que precisaram de outro nome.
+        Se algo falhar, desfaz o que já foi movido e falha com LibraryError.
+        """
+
+
+class Settings(Protocol):
+    """Preferências do app, guardadas entre sessões. Valores precisam caber em JSON."""
+
+    def get(self, key: str, default=None): ...
+
+    def set(self, key: str, value) -> None: ...
+
+
 class TrackRepository(Protocol):
     """Índice persistente da biblioteca.
 

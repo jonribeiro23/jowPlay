@@ -61,6 +61,14 @@ A tabela `tracks` também guarda colunas derivadas (nomes de exibição, textos 
 
 `rel_path` é relativo à pasta da biblioteca, para que ela possa mudar de lugar. A URL de origem do vídeo também é gravada nas etiquetas do arquivo (ID3 `WOAS`, MP4 `----:com.ytdown:source`, FLAC `YTDOWN_SOURCE`; a tabela completa está em `ytdown/infrastructure/tags.py`). É ela que identifica duplicatas. Por isso é gravado o endereço canônico informado pelo yt-dlp (`webpage_url`), igual para `youtu.be/X` e `youtube.com/watch?v=X`, e não o link exatamente como foi colado.
 
+## Pasta gerenciada
+
+- **Caminho:** `Artista/Álbum/NN - Título.ext`, definido em `domain/library_paths.py`. Campos vazios viram "Artista desconhecido", "Álbum desconhecido" e "Sem título". Caracteres proibidos no Windows (`<>:"/\|?*` e de controle) viram `_`. Pontos e espaços no fim são removidos. Nomes de dispositivo (CON, NUL, COM1...) ganham `_`.
+- **Tamanho:** o caminho completo precisa caber nos 260 caracteres do Windows. O nome do arquivo encurta primeiro; depois, artista e álbum, até os mínimos de 20 e 10 caracteres.
+- **Sem sobrescrever:** `FileSystemLibraryStorage` (em `infrastructure/library_storage.py`) nunca sobrescreve um arquivo; colisões ganham " (1)". Ele recusa caminhos que saiam da biblioteca (`..`, `C:`, `\`). Apaga pastas que ficam vazias e envia arquivos excluídos para a Lixeira do Windows.
+- **Troca de pasta:** o caso de uso `ChangeLibraryFolder` move tudo com progresso. Se algo falhar no meio, os arquivos voltam para o lugar e nada muda: nem arquivos, nem índice, nem configuração.
+- **Configurações:** ficam em `%APPDATA%\ytDown\settings.json` (`JsonSettings`), gravado de forma atômica. Um arquivo ilegível faz o app voltar aos valores padrão. A pasta padrão da biblioteca é `ytDown`, dentro da pasta Música real do usuário, mesmo que ela tenha sido redirecionada (ex.: OneDrive).
+
 ## Fluxos principais
 
 - **Extrair:** baixa na pasta temporária, grava as etiquetas, move para `Artista\Álbum\NN - Título.ext` na biblioteca e registra no banco.
