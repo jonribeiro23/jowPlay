@@ -3,10 +3,10 @@ import threading
 import unittest
 from pathlib import Path
 
-from tests.fakes import DEFAULT_COVER, FakeCovers, FakeDownloader, FakeTags
+from tests.fakes import DEFAULT_COVER, SOURCE_URL, FakeCovers, FakeDownloader, FakeTags
 from ytdown.application.extraction import ExtractAudio
 from ytdown.domain.errors import ExtractionCancelled, ExtractionError, InvalidCover
-from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, Stage
+from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, AudioTags, Stage
 
 MP3 = AUDIO_FORMATS[0]
 
@@ -38,20 +38,29 @@ class ExtractAudioTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(), b"audio")
         self.assertEqual(self.stages, [Stage.DOWNLOADING, Stage.TAGGING, Stage.SAVING])
 
-    def test_metadata_defaults_to_video_title_no_author_and_default_cover(self):
+    def test_tags_default_to_video_title_and_default_cover_with_the_source_url(self):
         self.run_extract()
-        self.assertEqual(self.tags.calls, [("video.mp3", "video", "", DEFAULT_COVER)])
+        self.assertEqual(
+            self.tags.calls, [("video.mp3", AudioTags(title="video", cover=DEFAULT_COVER, source_url=SOURCE_URL))]
+        )
 
     def test_title_falls_back_to_the_file_name(self):
         self.downloader.title = None
         self.run_extract()
-        self.assertEqual(self.tags.calls[0][1], "sem-titulo")
+        self.assertEqual(self.tags.calls[0][1].title, "sem-titulo")
 
-    def test_user_metadata_replaces_defaults(self):
+    def test_user_metadata_goes_to_the_tags(self):
         cover = Path("capa.png")
         self.covers.valid.add(cover)
-        self.run_extract(AudioMetadata(title="Meu nome", author="Eu", cover=cover))
-        self.assertEqual(self.tags.calls, [("video.mp3", "Meu nome", "Eu", b"capa:capa.png")])
+        metadata = AudioMetadata(
+            title="Meu nome", artist="Eu", cover=cover, album="Disco", genre="MPB", year=2024, track_no=3
+        )
+        self.run_extract(metadata)
+        expected = AudioTags(
+            title="Meu nome", cover=b"capa:capa.png", artist="Eu", album="Disco", genre="MPB", year=2024,
+            track_no=3, source_url=SOURCE_URL,
+        )
+        self.assertEqual(self.tags.calls, [("video.mp3", expected)])
 
     def test_invalid_cover_fails_before_downloading(self):
         with self.assertRaises(InvalidCover):

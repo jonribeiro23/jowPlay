@@ -68,7 +68,7 @@ class YtDlpDownloader:
         produced = sorted(work_dir.glob(f"*.{audio_format.extension}"))
         if not produced:
             raise ExtractionError("A conversão terminou, mas o arquivo de áudio não foi gerado.")
-        return DownloadedAudio(produced[0], info.get("title"))
+        return DownloadedAudio(produced[0], info.get("title"), info.get("webpage_url") or url)
 
     @staticmethod
     def _single_video_info(ydl: yt_dlp.YoutubeDL, url: str) -> dict:

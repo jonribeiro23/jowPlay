@@ -30,8 +30,30 @@ class AudioMetadata:
     """Dados escolhidos pelo usuário. Vazio significa usar o valor padrão."""
 
     title: str = ""  # Padrão: título do vídeo.
-    author: str = ""  # Padrão: sem autor.
+    artist: str = ""  # Padrão: sem artista.
     cover: Path | None = None  # Padrão: a capa padrão do app.
+    album: str = ""
+    genre: str = ""
+    year: int | None = None
+    track_no: int | None = None
+
+
+@dataclass(frozen=True)
+class AudioTags:
+    """Tudo o que é gravado nas etiquetas de um arquivo de áudio.
+
+    Campos vazios (texto vazio, None ou zero) não são gravados, e removem a
+    etiqueta correspondente se ela já existir no arquivo.
+    """
+
+    title: str
+    cover: bytes  # JPEG.
+    artist: str = ""
+    album: str = ""
+    genre: str = ""
+    year: int | None = None
+    track_no: int | None = None
+    source_url: str | None = None  # Página do vídeo de origem; identifica duplicatas.
 
 
 class Stage(Enum):

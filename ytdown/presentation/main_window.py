@@ -213,7 +213,7 @@ class MainWindow:
         cover = self.cover.get().strip().strip('"')  # "Copiar como caminho" inclui aspas.
         return AudioMetadata(
             title=self.title.get().strip(),
-            author=self.author.get().strip(),
+            artist=self.author.get().strip(),
             cover=Path(cover) if cover else None,
         )
 

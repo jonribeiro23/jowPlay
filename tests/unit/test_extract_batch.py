@@ -69,19 +69,20 @@ class ExtractBatchTests(unittest.TestCase):
         self.assertEqual([url for url, _ in self.extract.calls], ["u1", "u2"])  # u3 nem começou.
         self.assertEqual(len(self.reported), 3)
 
-    def test_same_author_and_cover_go_to_every_video(self):
+    def test_shared_details_go_to_every_video(self):
         cover = Path("capa.png")
-        metadata = AudioMetadata(author="Banda", cover=cover)
+        metadata = AudioMetadata(artist="Banda", cover=cover, album="Disco", genre="Rock", year=2024)
         self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=metadata, covers=FakeCovers({cover}))
         self.assertEqual([meta for _, meta in self.extract.calls], [metadata, metadata])
 
-    def test_with_several_videos_each_one_keeps_its_own_title(self):
-        self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=AudioMetadata(title="Mesmo nome"))
-        self.assertEqual([meta.title for _, meta in self.extract.calls], ["", ""])
+    def test_with_several_videos_each_one_keeps_its_own_title_and_number(self):
+        metadata = AudioMetadata(title="Mesmo nome", track_no=5, album="Disco")
+        self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=metadata)
+        self.assertEqual([(m.title, m.track_no, m.album) for _, m in self.extract.calls], [("", None, "Disco")] * 2)
 
-    def test_with_a_single_video_the_chosen_title_is_used(self):
-        self.run_batch({"u1": "a.mp3"}, metadata=AudioMetadata(title="Meu nome"))
-        self.assertEqual(self.extract.calls[0][1].title, "Meu nome")
+    def test_with_a_single_video_the_chosen_title_and_number_are_used(self):
+        self.run_batch({"u1": "a.mp3"}, metadata=AudioMetadata(title="Meu nome", track_no=5))
+        self.assertEqual((self.extract.calls[0][1].title, self.extract.calls[0][1].track_no), ("Meu nome", 5))
 
     def test_invalid_cover_fails_once_before_any_download(self):
         with self.assertRaises(InvalidCover):

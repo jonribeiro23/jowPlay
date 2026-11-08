@@ -10,9 +10,10 @@ from ytdown.application.ports import DownloadedAudio
 from ytdown.domain import library
 from ytdown.domain.errors import InvalidCover
 from ytdown.domain.library import Track, TrackQuery
-from ytdown.domain.models import AudioFormat, Progress, Stage
+from ytdown.domain.models import AudioFormat, AudioTags, Progress, Stage
 
 DEFAULT_COVER = b"capa-padrao"
+SOURCE_URL = "https://www.youtube.com/watch?v=video"
 
 
 class FakeDownloader:
@@ -33,7 +34,7 @@ class FakeDownloader:
             raise self.error
         path = work_dir / f"{self.title or 'sem-titulo'}.{audio_format.extension}"
         path.write_bytes(b"audio")
-        return DownloadedAudio(path, self.title)
+        return DownloadedAudio(path, self.title, SOURCE_URL)
 
 
 class FakeCovers:
@@ -50,10 +51,10 @@ class FakeCovers:
 
 class FakeTags:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, bytes]] = []
+        self.calls: list[tuple[str, AudioTags]] = []
 
-    def write(self, path: Path, title: str, author: str, cover: bytes) -> None:
-        self.calls.append((path.name, title, author, cover))
+    def write(self, path: Path, tags: AudioTags) -> None:
+        self.calls.append((path.name, tags))
 
 
 class InMemoryTrackRepository:

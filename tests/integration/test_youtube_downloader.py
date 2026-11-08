@@ -56,10 +56,16 @@ class YtDlpDownloaderTests(unittest.TestCase):
                 "https://youtu.be/x", self.work, MP3, lambda p: self.stages.append(p.stage), threading.Event()
             )
 
-    def test_returns_the_converted_file_and_the_video_title(self):
-        audio = self.download([{"title": "Me at the zoo"}])
-        self.assertEqual((audio.path, audio.title), (self.work / "video.mp3", "Me at the zoo"))
+    def test_returns_the_converted_file_the_title_and_the_canonical_url(self):
+        audio = self.download([{"title": "Me at the zoo", "webpage_url": "https://www.youtube.com/watch?v=x"}])
+        self.assertEqual(
+            (audio.path, audio.title, audio.source_url),
+            (self.work / "video.mp3", "Me at the zoo", "https://www.youtube.com/watch?v=x"),
+        )
         self.assertEqual(self.stages, [Stage.FETCHING_INFO])
+
+    def test_source_url_falls_back_to_the_given_url(self):
+        self.assertEqual(self.download([{"title": "x"}]).source_url, "https://youtu.be/x")
 
     def test_rejects_playlists_and_channels(self):
         for kind in ("playlist", "multi_video"):

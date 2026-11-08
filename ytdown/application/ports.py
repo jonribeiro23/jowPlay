@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from ytdown.domain.library import AlbumSummary, ArtistSummary, GenreSummary, Track, TrackQuery
-from ytdown.domain.models import AudioFormat, Progress
+from ytdown.domain.models import AudioFormat, AudioTags, Progress
 from ytdown.domain.sharing import TransferStatus
 
 ProgressCallback = Callable[[Progress], None]
@@ -19,6 +19,7 @@ ProgressCallback = Callable[[Progress], None]
 class DownloadedAudio:
     path: Path
     title: str | None  # Título do vídeo, se a fonte informar.
+    source_url: str | None  # Endereço canônico do vídeo (o mesmo para youtu.be/X e watch?v=X).
 
 
 class AudioDownloader(Protocol):
@@ -42,8 +43,8 @@ class CoverLoader(Protocol):
 
 
 class TagWriter(Protocol):
-    def write(self, path: Path, title: str, author: str, cover: bytes) -> None:
-        """Grava nome, autor (vazio remove) e capa no arquivo. Falha com ExtractionError."""
+    def write(self, path: Path, tags: AudioTags) -> None:
+        """Grava as etiquetas no arquivo; campos vazios removem as existentes. Falha com ExtractionError."""
 
 
 class TrackRepository(Protocol):

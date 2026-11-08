@@ -9,9 +9,9 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from ytdown.application.ports import AudioDownloader, CoverLoader, ProgressCallback, TagWriter
+from ytdown.application.ports import AudioDownloader, CoverLoader, DownloadedAudio, ProgressCallback, TagWriter
 from ytdown.domain.errors import ExtractionCancelled, ExtractionError
-from ytdown.domain.models import AudioFormat, AudioMetadata, BatchResult, Progress, Stage
+from ytdown.domain.models import AudioFormat, AudioMetadata, AudioTags, BatchResult, Progress, Stage
 
 
 def unique_path(path: Path) -> Path:
@@ -54,11 +54,23 @@ class ExtractAudio:
                 raise ExtractionCancelled()
 
             on_progress(Progress(Stage.TAGGING))
-            title = metadata.title or audio.title or audio.path.stem
-            self._tags.write(audio.path, title, metadata.author, cover)
+            self._tags.write(audio.path, self._tags_for(audio, metadata, cover))
 
             on_progress(Progress(Stage.SAVING))
             return self._save(audio.path, dest_dir)
+
+    @staticmethod
+    def _tags_for(audio: DownloadedAudio, metadata: AudioMetadata, cover: bytes) -> AudioTags:
+        return AudioTags(
+            title=metadata.title or audio.title or audio.path.stem,
+            cover=cover,
+            artist=metadata.artist,
+            album=metadata.album,
+            genre=metadata.genre,
+            year=metadata.year,
+            track_no=metadata.track_no,
+            source_url=audio.source_url,
+        )
 
     @staticmethod
     def _save(source: Path, dest_dir: Path) -> Path:
@@ -95,8 +107,9 @@ class ExtractBatch:
         # Uma capa inválida faria todos os vídeos falharem; melhor avisar uma vez só.
         self._covers.load(metadata.cover)
         if len(urls) > 1:
-            # Um mesmo nome para vários áudios não faz sentido: cada um usa o título do vídeo.
-            metadata = replace(metadata, title="")
+            # Um mesmo nome ou nº de faixa para vários áudios não faz sentido: cada um usa o
+            # título do próprio vídeo. Artista, álbum, gênero, ano e capa valem para todos.
+            metadata = replace(metadata, title="", track_no=None)
 
         results = []
         for index, url in enumerate(urls):

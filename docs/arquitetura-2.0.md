@@ -57,7 +57,7 @@ playlist_items(playlist_id, position, track_id)
 schema_version(version)
 ```
 
-`rel_path` é relativo à pasta da biblioteca, para que ela possa mudar de lugar. A URL de origem do vídeo também é gravada nas etiquetas do arquivo. É ela que identifica duplicatas e áudios extraídos antes da versão 2.0.
+`rel_path` é relativo à pasta da biblioteca, para que ela possa mudar de lugar. A URL de origem do vídeo também é gravada nas etiquetas do arquivo (ID3 `WOAS`, MP4 `----:com.ytdown:source`, FLAC `YTDOWN_SOURCE`; a tabela completa está em `ytdown/infrastructure/tags.py`). É ela que identifica duplicatas. Por isso é gravado o endereço canônico informado pelo yt-dlp (`webpage_url`), igual para `youtu.be/X` e `youtube.com/watch?v=X`, e não o link exatamente como foi colado.
 
 ## Fluxos principais
 
