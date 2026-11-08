@@ -13,5 +13,9 @@ class ExtractionCancelled(Exception):
     """O usuário cancelou a extração."""
 
 
+class UnreadableAudio(Exception):
+    """O arquivo não é um áudio que o ytDown saiba ler (formato sem suporte ou corrompido)."""
+
+
 class ShareError(Exception):
     """O compartilhamento com o celular não pôde ser iniciado."""

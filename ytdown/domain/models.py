@@ -39,6 +39,21 @@ class AudioMetadata:
 
 
 @dataclass(frozen=True)
+class AudioFileInfo:
+    """O que se sabe de um arquivo de áudio existente. Etiqueta ausente vira None."""
+
+    duration_ms: int
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    genre: str | None = None
+    year: int | None = None
+    track_no: int | None = None
+    source_url: str | None = None
+    has_cover: bool = False
+
+
+@dataclass(frozen=True)
 class AudioTags:
     """Tudo o que é gravado nas etiquetas de um arquivo de áudio.
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from ytdown.domain.library import AlbumSummary, ArtistSummary, GenreSummary, Track, TrackQuery
-from ytdown.domain.models import AudioFormat, AudioTags, Progress
+from ytdown.domain.models import AudioFileInfo, AudioFormat, AudioTags, Progress
 from ytdown.domain.sharing import TransferStatus
 
 ProgressCallback = Callable[[Progress], None]
@@ -45,6 +45,20 @@ class CoverLoader(Protocol):
 class TagWriter(Protocol):
     def write(self, path: Path, tags: AudioTags) -> None:
         """Grava as etiquetas no arquivo; campos vazios removem as existentes. Falha com ExtractionError."""
+
+
+class MetadataReader(Protocol):
+    def read(self, path: Path) -> AudioFileInfo:
+        """Lê as etiquetas e a duração. Arquivo sem etiquetas devolve só a duração.
+
+        Falha com UnreadableAudio se o formato não tiver suporte ou o arquivo estiver corrompido.
+        """
+
+    def read_cover(self, path: Path) -> bytes | None:
+        """Bytes da capa embutida (de preferência a da frente), ou None se não houver.
+
+        Falha com UnreadableAudio, como `read`.
+        """
 
 
 class TrackRepository(Protocol):
