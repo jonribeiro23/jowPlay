@@ -79,6 +79,11 @@ A tabela `tracks` também guarda colunas derivadas (nomes de exibição, textos 
   - **Pasta:** fica nas **Opções** (`presentation/qt/options_dialog.py`), que usa o `ChangeLibraryFolder` e não deixa mudar durante uma extração.
 - **Editar propriedades:** regrava as etiquetas, move o arquivo se o artista, o álbum ou o título mudou, e atualiza o banco.
 - **Tocar:** `Playback` monta a fila a partir da seleção e pede ao `AudioPlayer` a faixa atual. Ao passar de metade da faixa (ou de 4 minutos), conta uma reprodução.
+  - **Fila** (`domain/play_queue.py`, JOW-22): guarda a ordem da lista (a que o usuário vê) e a de reprodução. A mesma faixa pode entrar duas vezes.
+  - **Aleatório:** embaralha o resto, mantendo a faixa atual. Cada faixa toca uma vez por ciclo; com "repetir todas", cada ciclo é reembaralhado, sem repetir a última faixa logo no começo. Desligar volta à ordem da lista a partir da faixa atual.
+  - **Repetir uma** só vale quando a faixa termina sozinha. Próxima e Anterior, pedidos pelo usuário, mudam de faixa e dão a volta na fila.
+  - **Anterior** com mais de 3 s de faixa recomeça a faixa.
+  - **Fim da fila:** sem repetir, a fila para.
 - **Abrir o app:** `CheckLibrary` marca como indisponíveis as faixas cujo arquivo sumiu.
 - **Importar:** lê áudios extraídos antes da 2.0, copia para a biblioteca e ignora duplicatas pela URL de origem ou pelo conteúdo.
 
