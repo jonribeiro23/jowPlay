@@ -4,12 +4,19 @@ Aplicativo para Windows 10 e 11 que extrai o áudio de um vídeo do YouTube e o 
 
 ## Como usar
 
-1. Abra `dist\ytDown\ytDown.exe`.
+1. Abra `dist\ytDown\ytDown.exe` e clique em **Extrair**, na árvore à esquerda.
 2. Cole a URL do vídeo. Para extrair vários de uma vez, coloque uma URL por linha.
-3. Escolha o formato (MP3, M4A, FLAC ou WAV) e a pasta de destino.
-4. Clique em **Extrair áudio**.
+3. Escolha o formato (MP3, M4A, FLAC ou WAV) e, se quiser, preencha as informações do áudio.
+4. Clique em **Extrair áudio** (ou tecle **Ctrl+Enter** na caixa de URLs).
 
-O arquivo recebe o título do vídeo. Se já existir um arquivo com esse nome, o novo será salvo como `Título (1).mp3`, sem substituir o anterior.
+### A biblioteca
+
+Todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`. O índice da biblioteca fica em `%APPDATA%\ytDown\library.db`.
+
+- Para usar outra pasta, clique em **Opções** (embaixo da árvore) e em **Alterar...**. Os áudios que já estão na biblioteca vão junto para a pasta nova.
+- Ao extrair de novo um vídeo que já está na biblioteca (mesmo que o link esteja em outro formato), o app pergunta: **Substituir** (o áudio novo fica no lugar do antigo, que vai para a Lixeira), **Manter os dois** ou **Cancelar**.
+- Um nome de arquivo já ocupado ganha " (1)"; nenhum arquivo é substituído sem você pedir.
+- **Mostrar arquivo** abre a pasta do áudio no Explorador.
 
 ### Vários vídeos de uma vez
 
@@ -17,25 +24,30 @@ Coloque uma URL por linha na caixa de URLs; o botão **Colar** acrescenta o que 
 
 - Os vídeos são extraídos um de cada vez, na ordem da lista. Linhas em branco e URLs repetidas são ignoradas.
 - Se algum vídeo falhar, os outros continuam. A lista mostra a situação de cada vídeo, e o resumo no fim explica cada falha.
-- **Cancelar** interrompe o vídeo atual e os que ainda não começaram. Os áudios já salvos continuam na pasta.
-- Com mais de um vídeo, o campo **Nome** fica desativado e cada áudio recebe o título do próprio vídeo. **Autor** e **Imagem de capa** valem para todos, o que é útil para um álbum.
+- **Cancelar** interrompe o vídeo atual e os que ainda não começaram. Os áudios já salvos continuam na biblioteca.
+- Com mais de um vídeo, o campo **Nome** fica desativado e cada áudio recebe o título do próprio vídeo. **Autor**, **Álbum**, **Gênero**, **Ano** e **Imagem de capa** valem para todos.
+- Para extrair um álbum, marque **Numerar faixas na ordem da lista**: cada vídeo recebe o nº da sua posição (a partir do nº digitado em "Nº da primeira faixa", ou de 1).
 - **Enviar para o celular** envia todos os áudios salvos da última extração.
 
-### Nome, autor e capa
+### Informações do áudio
 
-Estas informações são gravadas no arquivo de áudio para aparecerem nos players. Todas são opcionais:
+Estas informações são gravadas no arquivo de áudio, para aparecerem nos players, e organizam a biblioteca. Todas são opcionais:
 
 | Campo | Se ficar vazio |
 | --- | --- |
 | Nome | Título do vídeo |
-| Autor | Fica sem autor |
+| Autor | Fica sem autor (pasta "Artista desconhecido") |
+| Álbum | Fica sem álbum (pasta "Álbum desconhecido") |
+| Gênero | Fica sem gênero; ao digitar, o app sugere os gêneros que já existem na biblioteca |
+| Ano | Fica sem ano (precisa ter 4 dígitos) |
+| Nº da faixa | Fica sem número (precisa ser maior que zero) |
 | Imagem de capa | Imagem padrão (`assets\default_cover.jpg`) |
 
 A capa pode ser JPG, PNG, WebP, BMP ou GIF. Ela é salva em JPEG, com no máximo 1000 pixels no lado maior, e a proporção é mantida. Áreas transparentes ficam brancas.
 
-Depois de cada extração concluída, esses três campos são limpos para que os dados de um áudio não passem para o próximo sem querer.
+Depois de cada extração concluída, esses campos são limpos para que os dados de um áudio não passem para o próximo sem querer.
 
-Os metadados não mudam o nome do arquivo, que continua sendo o título do vídeo. O formato WAV não tem um padrão oficial para capa e autor: o app grava esses dados, mas nem todo player os exibe. Para garantir a exibição, prefira MP3, M4A ou FLAC.
+O formato WAV não tem um padrão oficial para essas informações: o app as grava, mas nem todo player as exibe. Para garantir a exibição, prefira MP3, M4A ou FLAC.
 
 Para trocar a capa padrão, substitua `assets\default_cover.jpg` e gere o aplicativo de novo.
 
@@ -45,7 +57,7 @@ O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
 
 1. Instale `dist\ytDown-celular.apk` no celular (Android 10 ou mais recente). Pelo cabo, com a depuração USB ativa: `adb install -r dist\ytDown-celular.apk`. Em celulares Xiaomi, ligue também **Instalar via USB** nas opções do desenvolvedor e confirme o aviso que aparece na tela.
 2. Conecte o celular ao Wi-Fi da mesma rede do PC.
-3. No PC, extraia um áudio e clique em **Enviar para o celular**. Se o Windows perguntar, permita o acesso em redes privadas.
+3. No PC, extraia um áudio e clique em **Enviar para o celular**, na página Extrair. Se o Windows perguntar, permita o acesso em redes privadas.
 4. Abra o app no celular e escolha o PC. Na primeira vez, digite o código de 6 dígitos mostrado na janela do PC.
 5. Toque em **Baixar**. O áudio fica em `Música/ytDown`, com nome, autor e capa, e aparece nos players do celular.
 
@@ -79,15 +91,10 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
-A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração e o envio para o celular já estão na página "Extrair" da interface Qt. Até a JOW-21, `main.py --legacy` ainda abre a interface Tkinter da versão 1.x, que continua salvando numa pasta escolhida.
-
-Na interface Qt, todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`, com o índice em `%APPDATA%\ytDown\library.db`. A pasta pode ser trocada em **Opções** (embaixo da árvore); os áudios vão junto. Ao extrair de novo um vídeo que já está na biblioteca, o app pergunta se deve substituir, manter os dois ou cancelar.
-
-A página "Extrair" também aceita **álbum, gênero (com sugestões dos gêneros já existentes), ano e nº da faixa**. Numa fila, álbum, gênero e ano valem para todos os vídeos; com **Numerar faixas na ordem da lista**, cada vídeo recebe o nº da sua posição (a partir do nº digitado, ou de 1). Assim, uma fila extraída como álbum chega à biblioteca já em ordem.
+A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A interface é toda em Qt (PySide6); a de Tkinter da 1.x saiu na JOW-21.
 
 ```powershell
-.\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)
-.\.venv\Scripts\python.exe main.py --legacy                         # interface Tkinter da 1.x
+.\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
 .\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (não usam a rede)
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\ytDown
 powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
@@ -97,28 +104,30 @@ O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android
 
 ### Arquitetura
 
-O código segue a Clean Architecture: está dividido em camadas, e cada camada só depende das que estão mais para dentro. As regras de negócio não conhecem yt-dlp, mutagen, Tkinter nem a rede, e por isso podem ser testadas sem eles. O teste `tests/unit/test_architecture.py` falha se alguma camada importar o que não deve.
+O código segue a Clean Architecture: está dividido em camadas, e cada camada só depende das que estão mais para dentro. As regras de negócio não conhecem yt-dlp, mutagen, Qt nem a rede, e por isso podem ser testadas sem eles. O teste `tests/unit/test_architecture.py` falha se alguma camada importar o que não deve.
 
 ```
 main.py                    ponto de entrada (também usado pelo PyInstaller)
 ytdown/
   domain/                  conceitos e regras puras: formatos, metadados, URLs, erros
-  application/             casos de uso (ExtractAudio, ExtractBatch, SharingSession)
+  application/             casos de uso (ExtractAudio, ExtractBatch, RegisterExtractedTrack, SharingSession)
     ports.py               interfaces de que os casos de uso precisam
   infrastructure/          implementações dessas interfaces
     youtube.py             download e conversão (yt-dlp + ffmpeg)
     tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
     sharing/               servidor HTTP/UDP para o celular e celulares pareados
+    sqlite_library.py,     índice da biblioteca (SQLite) e a pasta gerenciada
+      library_storage.py
   presentation/            todos os textos mostrados ao usuário e as janelas
-    qt/                    interface 2.0 em Qt (PySide6): janela principal, páginas, envio para o celular
-    main_window.py, ...    interface Tkinter da 1.x (sai na JOW-21)
+    qt/                    interface em Qt (PySide6): janela principal, páginas, Opções, envio para o celular
   bootstrap.py             escolhe as implementações e conecta as camadas
 tests/
   unit/                    regras e casos de uso, com dublês das interfaces (tests/fakes.py)
-  integration/             implementações reais: arquivos de áudio, sockets, janela Tk
+  integration/             implementações reais: arquivos de áudio, SQLite, sockets, janelas Qt (offscreen)
   contracts/               baterias que toda implementação de um port precisa passar
 assets/                    ícone, capa padrão e o tema visual (theme/: folha de estilo e ícones SVG)
 scripts/                   scripts de build
+licencas/                  licenças que acompanham o app (Qt/LGPLv3)
 android/                   app para Android
 ```
 
@@ -154,6 +163,8 @@ O app pronto não fica no repositório (o `ffmpeg.exe` tem mais de 100 MB). Ele 
 ## Licenças de terceiros
 
 O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `scripts\build_windows.ps1` copia para `dist\ytDown\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
+
+A interface usa o [Qt](https://www.qt.io) por meio do [PySide6](https://doc.qt.io/qtforpython-6/) (Qt for Python), sob a LGPLv3. O script copia para `dist\ytDown\licencas\qt` o texto da LGPLv3 (e da GPLv3, que ela complementa), a versão usada e onde obter o código-fonte; esses arquivos ficam em `licencas\qt` no repositório. As bibliotecas do Qt vão sem modificações, como DLLs separadas na pasta `_internal`, e podem ser substituídas por outra versão compatível.
 
 Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mutagen](https://github.com/quodlibet/mutagen) (GPLv2+), [Pillow](https://python-pillow.org) (licença MIT-CMU) e Python (licença PSF).
 

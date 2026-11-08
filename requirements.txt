@@ -1,5 +1,9 @@
+# Download e conversão do áudio.
 yt-dlp[default]
+# Capa (redimensionar e converter para JPEG).
 pillow
+# Interface (Qt 6, LGPLv3). O Addons traz o QtMultimedia, usado pelo player.
 PySide6-Essentials>=6.12,<7
 PySide6-Addons>=6.12,<7
+# Gera dist\ytDown (scripts\build_windows.ps1).
 pyinstaller

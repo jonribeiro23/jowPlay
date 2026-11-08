@@ -54,6 +54,12 @@ QStackedWidget#pages {
     background: {{surface}};
 }
 
+/* A área de rolagem de cada página deixa ver o fundo das páginas. */
+QScrollArea#pageScroll, QScrollArea#pageScroll > QWidget#qt_scrollarea_viewport {
+    background: transparent;
+    border: none;
+}
+
 QWidget#playQueuePane {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{pane_top}}, stop:1 {{pane_bottom}});
 }

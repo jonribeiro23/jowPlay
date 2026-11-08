@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 import tempfile
 import threading
 from collections.abc import Callable
@@ -30,22 +29,6 @@ class AudioDestination(Protocol):
 
     def save(self, file: Path, tags: AudioTags) -> Path:
         """Move `file` para o destino e devolve onde ele ficou. Falha com ExtractionError."""
-
-
-class SaveToFolder:
-    """Salva numa pasta qualquer, com o nome do arquivo baixado e sem substituir arquivos."""
-
-    def __init__(self, folder: Path) -> None:
-        self.folder = folder
-
-    def save(self, file: Path, tags: AudioTags) -> Path:
-        try:
-            self.folder.mkdir(parents=True, exist_ok=True)
-            target = unique_path(self.folder / file.name)
-            shutil.move(file, target)
-        except OSError as exc:
-            raise ExtractionError(f"Não foi possível salvar em {self.folder}: {exc}") from exc
-        return target
 
 
 class ExtractAudio:

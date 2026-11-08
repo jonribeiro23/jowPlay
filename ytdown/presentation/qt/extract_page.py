@@ -220,20 +220,23 @@ class ExtractPage(QWidget):
         """Nome, autor, álbum, gênero, ano, nº da faixa e capa; tudo opcional."""
         box = QGroupBox("Informações do áudio (opcional)")
         grid = QGridLayout(box)
-        grid.setColumnStretch(0, 3)
-        grid.setColumnStretch(1, 2)
+        grid.setColumnStretch(0, 3)  # Álbum
+        grid.setColumnStretch(1, 2)  # Gênero; Ano e Nº ficam com a largura mínima.
+        all_columns = (1, 4)
 
         self.title_label = QLabel(texts.TITLE_LABEL_SINGLE)
-        grid.addWidget(self.title_label, 0, 0, 1, 2)
+        grid.addWidget(self.title_label, 0, 0, *all_columns)
         self.title_field = QLineEdit()
-        grid.addWidget(self.title_field, 1, 0, 1, 2)
+        grid.addWidget(self.title_field, 1, 0, *all_columns)
 
-        grid.addWidget(QLabel("Autor (vazio: sem autor)"), 2, 0, 1, 2)
+        grid.addWidget(QLabel("Autor (vazio: sem autor)"), 2, 0, *all_columns)
         self.artist_field = QLineEdit()
-        grid.addWidget(self.artist_field, 3, 0, 1, 2)
+        grid.addWidget(self.artist_field, 3, 0, *all_columns)
 
-        grid.addWidget(QLabel("Álbum"), 4, 0)
-        grid.addWidget(QLabel("Gênero"), 4, 1)
+        # Álbum, gênero, ano e nº numa linha só, para a página caber na janela.
+        self.track_label = QLabel(texts.TRACK_LABEL_SINGLE)
+        for column, label in enumerate((QLabel("Álbum"), QLabel("Gênero"), QLabel("Ano"), self.track_label)):
+            grid.addWidget(label, 4, column)
         self.album_field = QLineEdit()
         grid.addWidget(self.album_field, 5, 0)
         self.genre_field = QLineEdit()
@@ -242,43 +245,33 @@ class ExtractPage(QWidget):
         self.genre_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.genre_field.setCompleter(self.genre_completer)
         grid.addWidget(self.genre_field, 5, 1)
+        self.year_field = QLineEdit()
+        self.year_field.setMaxLength(4)
+        self.year_field.setPlaceholderText("2024")
+        self.year_field.setFixedWidth(self.year_field.fontMetrics().horizontalAdvance("00000") + 24)
+        grid.addWidget(self.year_field, 5, 2)
+        self.track_field = QLineEdit()
+        self.track_field.setMaxLength(3)
+        self.track_field.setFixedWidth(self.year_field.width())
+        grid.addWidget(self.track_field, 5, 3, Qt.AlignmentFlag.AlignLeft)
 
-        grid.addLayout(self._year_and_number(), 6, 0, 1, 2)
+        self.number_tracks_box = QCheckBox(texts.NUMBER_TRACKS_LABEL)  # Só aparece numa fila.
+        self.number_tracks_box.toggled.connect(self._refresh_batch_fields)
+        grid.addWidget(self.number_tracks_box, 6, 0, *all_columns)
 
-        grid.addWidget(QLabel("Imagem de capa (vazio: imagem padrão)"), 7, 0, 1, 2)
+        grid.addWidget(QLabel("Imagem de capa (vazio: imagem padrão)"), 7, 0, *all_columns)
         cover_row = QHBoxLayout()
         self.cover_field = QLineEdit()
         cover_row.addWidget(self.cover_field, stretch=1)
         self.cover_button = QPushButton("Procurar...")
         self.cover_button.clicked.connect(self._choose_cover)
         cover_row.addWidget(self.cover_button)
-        grid.addLayout(cover_row, 8, 0, 1, 2)
+        grid.addLayout(cover_row, 8, 0, *all_columns)
 
         for field in (self.title_field, self.artist_field, self.album_field, self.genre_field, self.year_field,
                       self.track_field, self.cover_field):
             field.returnPressed.connect(self.start)
         return box
-
-    def _year_and_number(self) -> QGridLayout:
-        grid = QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.addWidget(QLabel("Ano"), 0, 0)
-        self.track_label = QLabel(texts.TRACK_LABEL_SINGLE)
-        grid.addWidget(self.track_label, 0, 1)
-        self.year_field = QLineEdit()
-        self.year_field.setMaxLength(4)
-        self.year_field.setPlaceholderText("2024")
-        self.year_field.setFixedWidth(self.year_field.fontMetrics().horizontalAdvance("00000") + 24)
-        grid.addWidget(self.year_field, 1, 0)
-        self.track_field = QLineEdit()
-        self.track_field.setMaxLength(3)
-        self.track_field.setFixedWidth(self.year_field.width())
-        grid.addWidget(self.track_field, 1, 1)
-        self.number_tracks_box = QCheckBox(texts.NUMBER_TRACKS_LABEL)
-        self.number_tracks_box.toggled.connect(self._refresh_batch_fields)
-        grid.addWidget(self.number_tracks_box, 1, 2)
-        grid.setColumnStretch(2, 1)
-        return grid
 
     def _queue_list(self) -> QTreeWidget:
         """Situação de cada vídeo; aparece só quando há mais de um."""

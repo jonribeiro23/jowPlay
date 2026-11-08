@@ -62,7 +62,7 @@ def create_share_server(on_change: Callable[[], None]) -> LocalShareServer:
 
 
 def run() -> int:
-    """Abre a nova interface em Qt (ytDown 2.0, em construção)."""
+    """Abre o app (interface em Qt) e devolve o código de saída."""
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -115,18 +115,3 @@ def run() -> int:
     del window, pages
     library.close()
     return exit_code
-
-
-def run_legacy() -> None:
-    """Interface Tkinter da versão 1.x, mantida até a JOW-21."""
-    import tkinter as tk
-
-    from ytdown.presentation.main_window import MainWindow
-
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)  # Evita texto borrado em telas com escala.
-    root = tk.Tk()
-    root.iconbitmap(default=str(asset("icon.ico")))  # Vale também para as outras janelas.
-    MainWindow(root, build_extract_batch(), create_share_server)
-    root.update_idletasks()
-    root.minsize(root.winfo_reqwidth(), root.winfo_reqheight())
-    root.mainloop()

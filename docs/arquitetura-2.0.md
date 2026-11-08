@@ -72,7 +72,7 @@ A tabela `tracks` também guarda colunas derivadas (nomes de exibição, textos 
 ## Fluxos principais
 
 - **Extrair:** baixa na pasta temporária, grava as etiquetas, move para `Artista\Álbum\NN - Título.ext` na biblioteca e registra no banco (`RegisterExtractedTrack`, JOW-19).
-  - A extração entrega o arquivo a um *destino* (`AudioDestination`): `RegisterExtractedTrack.destination()` na interface Qt, `SaveToFolder` na interface 1.x.
+  - A extração entrega o arquivo a um *destino* (`AudioDestination`); no app, é `RegisterExtractedTrack.destination()`.
   - **Duplicatas:** antes de baixar, cada link é convertido no endereço canônico (`domain/urls.canonical_video_url`, igual ao `webpage_url` do yt-dlp) e procurado no banco. A pergunta (substituir, manter os dois, cancelar) é feita uma vez para a fila. *Substituir* mantém a faixa (id, data de inclusão, reproduções), usa o arquivo novo e manda o antigo para a Lixeira.
   - **Sem órfãos:** se o banco recusar a faixa, o arquivo recém-colocado é apagado (`LibraryStorage.discard`).
   - **Threads:** a extração registra a faixa fora da thread da interface; o `SqliteTrackRepository` serializa as operações com uma trava (`check_same_thread=False`).
@@ -125,7 +125,7 @@ Protótipo com `QMediaPlayer` + `QAudioOutput` (PySide6 6.12.0, Qt 6.12.0, Pytho
 | Com as exclusões abaixo (testado: tudo continua funcionando) | 88,0 MB |
 | Parte do Qt no pacote enxuto (PySide6 + shiboken6) | 68,6 MB |
 
-Arquivos que o PyInstaller inclui, mas o app não usa. Devem ser excluídos no `scripts/build_windows.ps1` (JOW-21):
+Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.ps1` os exclui desde a JOW-21 (módulos com `--exclude-module`; DLLs, plugins e traduções apagados depois do build), junto com o Tkinter:
 
 - `opengl32sw.dll` (19,7 MB, OpenGL por software)
 - `Qt6Quick`, `Qt6Qml`, `Qt6QmlMeta`, `Qt6QmlModels`, `Qt6QmlWorkerScript`, `Qt6VirtualKeyboard` (QML e teclado virtual)
@@ -151,5 +151,5 @@ Arquivos que o PyInstaller inclui, mas o app não usa. Devem ser excluídos no `
 ## Riscos
 
 - **Tamanho do app:** medido no spike; ver "Tamanho do pacote" acima.
-- **Licença do Qt:** PySide6 e o FFmpeg do Qt são LGPLv3. As licenças precisam acompanhar o app, como já acontece com o FFmpeg de conversão (JOW-21).
+- **Licença do Qt:** PySide6 e o FFmpeg do Qt são LGPLv3. Desde a JOW-21, o build copia `licencas/qt` (LGPLv3, GPLv3, onde obter o código-fonte) e a versão usada para `dist\ytDown\licencas\qt`. As DLLs do Qt ficam separadas e sem modificações, como a LGPL pede.
 - **Áudios espalhados pelo disco:** extrações anteriores à 2.0 estão em pastas escolhidas pelo usuário. A importação os traz para a biblioteca.

@@ -36,7 +36,17 @@ def violations(layer: str, forbidden: tuple[str, ...]) -> list[str]:
     return found
 
 
+PROJECT = PACKAGE.parent
+
+
 class LayerTests(unittest.TestCase):
+    def test_tkinter_is_gone(self):
+        # A interface é só Qt desde a JOW-21; o Tkinter nem vai mais no pacote.
+        sources = [PROJECT / "main.py", *PACKAGE.rglob("*.py"), *(PROJECT / "tests").rglob("*.py")]
+        found = [str(path.relative_to(PROJECT)) for path in sources
+                 if any(module.split(".")[0] in ("tkinter", "_tkinter") for module in imported_modules(path))]
+        self.assertEqual(found, [])
+
     def test_layers_only_depend_inward(self):
         for layer, forbidden in FORBIDDEN.items():
             with self.subTest(layer):

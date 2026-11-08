@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from pathlib import Path
 
 from ytdown.domain.library import Track
 from ytdown.domain.models import AudioFormat, BatchResult, Progress, Stage
@@ -91,7 +90,6 @@ def url_problem(urls: list[str], invalid_lines: list[int]) -> Message | None:
     return None
 
 
-INVALID_DESTINATION = Message("Escolha uma pasta válida para salvar o áudio.", Tone.ERROR)
 INVALID_YEAR = Message("O ano precisa ter 4 dígitos, como 2024.", Tone.ERROR)
 INVALID_TRACK_NO = Message("O nº da faixa precisa ser um número inteiro maior que zero, como 1.", Tone.ERROR)
 
@@ -153,10 +151,6 @@ def share_address(address: str) -> str:
 
 def pairing_code(code: str) -> str:
     return f"{code[:3]} {code[3:]}"
-
-
-def default_destination() -> str:
-    return str(Path.home() / "Downloads")
 
 
 # --- biblioteca

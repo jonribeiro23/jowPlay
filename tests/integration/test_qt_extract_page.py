@@ -16,7 +16,7 @@ from ytdown.domain.library import DuplicatePolicy, Track
 from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.presentation import texts
 from ytdown.presentation.qt.extract_page import CANCEL_LABEL, EXTRACT_LABEL, ExtractPage, ask_duplicates_dialog
-from ytdown.presentation.qt.main_window import MainWindow
+from ytdown.presentation.qt.main_window import MINIMUM_SIZE, MainWindow
 from ytdown.presentation.qt.pages import PageId, PlaceholderPage
 
 DEST = Path("C:/Musica")
@@ -361,6 +361,30 @@ class ClosingDuringExtractionTests(unittest.TestCase):
         self.assertFalse(window.isVisible())
         self.assertTrue(wait_until(lambda: accepted == [False, True], 5000))  # Fechou ao terminar.
         self.assertFalse(page.is_working())
+
+
+class SmallWindowTests(unittest.TestCase):
+    """Na janela pequena, a página rola; os campos nunca ficam espremidos."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt_app()
+
+    def test_fields_keep_their_height_and_the_page_scrolls(self):
+        window = MainWindow(lambda p: ExtractPage(FakeBatch(), FakeLibrary(folder=Path("C:/" + "pasta/" * 30)))
+                            if p is PageId.EXTRACT else PlaceholderPage(p))
+        self.addCleanup(dispose, window)
+        window.resize(*MINIMUM_SIZE)
+        window.show()
+        window.show_page(PageId.EXTRACT)
+        page = window.page(PageId.EXTRACT)
+        page._show(texts.Message("Uma mensagem longa\n" * 6))
+        QTest.qWait(50)
+        for field in (page.year_field, page.track_field, page.album_field, page.cover_field):
+            with self.subTest(field.objectName() or type(field).__name__):
+                self.assertGreaterEqual(field.height(), field.minimumSizeHint().height())
+        scroll = window.pages.currentWidget()
+        self.assertTrue(scroll.verticalScrollBar().maximum() > 0)
 
 
 class DuplicateQuestionTests(unittest.TestCase):

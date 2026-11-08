@@ -6,7 +6,16 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
-from PySide6.QtWidgets import QMainWindow, QSplitter, QStackedWidget, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QMainWindow,
+    QScrollArea,
+    QSplitter,
+    QStackedWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ytdown.presentation import texts
 from ytdown.presentation.qt import theme
@@ -47,8 +56,11 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.pages.setObjectName("pages")
         self._page_index: dict[PageId, int] = {}
+        self._page_widgets: dict[PageId, QWidget] = {}
         for page in PageId:
-            self._page_index[page] = self.pages.addWidget(page_factory(page))
+            widget = page_factory(page)
+            self._page_widgets[page] = widget
+            self._page_index[page] = self.pages.addWidget(self._scrollable(widget))
         self.play_queue = PlayQueuePane()
         self.transport = TransportBar()
 
@@ -94,8 +106,18 @@ class MainWindow(QMainWindow):
             return
         event.accept()
 
+    @staticmethod
+    def _scrollable(page: QWidget) -> QScrollArea:
+        """Com a janela baixa, a página rola em vez de espremer os campos."""
+        area = QScrollArea()
+        area.setObjectName("pageScroll")
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        area.setWidget(page)
+        return area
+
     def _pages(self) -> list[QWidget]:
-        return [self.pages.widget(i) for i in range(self.pages.count())]
+        return list(self._page_widgets.values())
 
     def show_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])
@@ -107,4 +129,4 @@ class MainWindow(QMainWindow):
         return next(page for page, i in self._page_index.items() if i == index)
 
     def page(self, page: PageId) -> QWidget:
-        return self.pages.widget(self._page_index[page])
+        return self._page_widgets[page]
