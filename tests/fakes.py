@@ -65,6 +65,8 @@ class InMemoryTrackRepository:
         self._next_id = 1
 
     def add(self, track: Track) -> Track:
+        if self.find_by_path(track.rel_path):
+            raise ValueError(f"Já existe uma faixa em {track.rel_path}")
         saved = replace(track, id=self._next_id)
         self._tracks[saved.id] = saved
         self._next_id += 1

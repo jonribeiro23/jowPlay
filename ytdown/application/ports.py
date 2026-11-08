@@ -70,7 +70,10 @@ class TrackRepository(Protocol):
     """
 
     def add(self, track: Track) -> Track:
-        """Salva uma faixa nova e a devolve com o `id` preenchido."""
+        """Salva uma faixa nova e a devolve com o `id` preenchido.
+
+        Falha com ValueError se já existir uma faixa com o mesmo `rel_path`.
+        """
 
     def update(self, track: Track) -> None:
         """Substitui todos os dados da faixa com o mesmo `id`. Falha com KeyError se ela não existir."""

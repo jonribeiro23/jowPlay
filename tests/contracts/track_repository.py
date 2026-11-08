@@ -53,6 +53,10 @@ class TrackRepositoryContract:
         self.assertTrue(all(isinstance(i, int) for i in ids))
         self.assertEqual(len(set(ids)), len(ids))
 
+    def test_two_tracks_cannot_share_a_path(self):
+        with self.assertRaises(ValueError):
+            self.repo.add(replace(sample_tracks()[0], title="Outra"))
+
     def test_get_returns_exactly_what_was_saved(self):
         for track in self.saved:
             self.assertEqual(self.repo.get(track.id), track)

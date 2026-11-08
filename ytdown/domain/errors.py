@@ -17,5 +17,9 @@ class UnreadableAudio(Exception):
     """O arquivo não é um áudio que o ytDown saiba ler (formato sem suporte ou corrompido)."""
 
 
+class LibraryError(Exception):
+    """O índice da biblioteca não pôde ser aberto ou alterado."""
+
+
 class ShareError(Exception):
     """O compartilhamento com o celular não pôde ser iniciado."""
