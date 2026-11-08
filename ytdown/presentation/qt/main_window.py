@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QSplitter, QStackedWidget, QVBoxLayout, QWidget
 
 from ytdown.presentation.qt.navigation import NavigationPane
@@ -58,6 +58,20 @@ class MainWindow(QMainWindow):
         self.transport.queue_pane_toggled.connect(self.play_queue.setVisible)
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.transport.queue_toggle.toggle)
         self.navigation.select(FIRST_PAGE)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Páginas com trabalho em andamento (ex.: extração) terminam antes de a janela fechar:
+        a janela some na hora, e o app só encerra depois que elas limparem o que criaram.
+        """
+        waiting = [page for page in self._pages() if hasattr(page, "shutdown") and not page.shutdown(self.close)]
+        if waiting:
+            event.ignore()
+            self.hide()
+            return
+        event.accept()
+
+    def _pages(self) -> list[QWidget]:
+        return [self.pages.widget(i) for i in range(self.pages.count())]
 
     def show_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])

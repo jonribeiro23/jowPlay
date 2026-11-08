@@ -79,7 +79,7 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
-A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. Enquanto a extração e o envio para o celular não migram para o Qt, `main.py --legacy` abre a interface Tkinter da versão 1.x.
+A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração já está na página "Extrair" da interface Qt. Enquanto o envio para o celular não migra (JOW-17), `main.py --legacy` abre a interface Tkinter da versão 1.x.
 
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)

@@ -34,15 +34,28 @@ def run() -> int:
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 
+    from ytdown.presentation.qt.extract_page import ExtractPage
     from ytdown.presentation.qt.main_window import MainWindow
+    from ytdown.presentation.qt.pages import PageId, PlaceholderPage
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = QApplication(sys.argv)
     app.setApplicationName("ytDown")
     app.setWindowIcon(QIcon(str(asset("icon.ico"))))
-    window = MainWindow()
+    extract_batch = build_extract_batch()
+
+    def page_factory(page: PageId):
+        if page is PageId.EXTRACT:
+            return ExtractPage(extract_batch)  # O envio para o celular entra na JOW-17.
+        return PlaceholderPage(page)
+
+    window = MainWindow(page_factory)
     window.show()
-    return app.exec()
+    exit_code = app.exec()
+    # Apaga a janela enquanto a QApplication ainda existe; deixar para o fim do processo
+    # faz o Python destruí-las em ordem qualquer, e o app pode cair ao fechar.
+    del window
+    return exit_code
 
 
 def run_legacy() -> None:

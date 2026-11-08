@@ -2,7 +2,7 @@
 
 import unittest
 
-from tests.qt_support import qt_app
+from tests.qt_support import dispose, qt_app
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QLabel
@@ -21,7 +21,7 @@ class MainWindowTests(unittest.TestCase):
         self.window = MainWindow()
         self.window.show()
         QTest.qWaitForWindowExposed(self.window)
-        self.addCleanup(self.window.close)
+        self.addCleanup(dispose, self.window)
 
     def click_navigation(self, page: PageId):
         """Clica no item da árvore como um usuário faria."""
