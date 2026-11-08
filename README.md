@@ -107,6 +107,7 @@ ytdown/
 tests/
   unit/                    regras e casos de uso, com dublês das interfaces (tests/fakes.py)
   integration/             implementações reais: arquivos de áudio, sockets, janela Tk
+  contracts/               baterias que toda implementação de um port precisa passar
 assets/                    ícone e capa padrão
 scripts/                   scripts de build
 android/                   app para Android

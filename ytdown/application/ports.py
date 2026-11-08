@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from ytdown.domain.library import AlbumSummary, ArtistSummary, GenreSummary, Track, TrackQuery
 from ytdown.domain.models import AudioFormat, Progress
 from ytdown.domain.sharing import TransferStatus
 
@@ -43,6 +44,39 @@ class CoverLoader(Protocol):
 class TagWriter(Protocol):
     def write(self, path: Path, title: str, author: str, cover: bytes) -> None:
         """Grava nome, autor (vazio remove) e capa no arquivo. Falha com ExtractionError."""
+
+
+class TrackRepository(Protocol):
+    """Índice persistente da biblioteca.
+
+    Os resultados de `list_tracks`, `artists`, `albums` e `genres` devem ser iguais aos das
+    funções de referência em `ytdown.domain.library` (query_tracks, summarize_*). O teste
+    de contrato em `tests/contracts/track_repository.py` verifica isso em cada implementação.
+    """
+
+    def add(self, track: Track) -> Track:
+        """Salva uma faixa nova e a devolve com o `id` preenchido."""
+
+    def update(self, track: Track) -> None:
+        """Substitui todos os dados da faixa com o mesmo `id`. Falha com KeyError se ela não existir."""
+
+    def remove(self, track_id: int) -> None:
+        """Remove a faixa; não faz nada se ela não existir."""
+
+    def get(self, track_id: int) -> Track | None: ...
+
+    def find_by_source_url(self, url: str) -> Track | None: ...
+
+    def find_by_path(self, rel_path: str) -> Track | None: ...
+
+    def list_tracks(self, query: TrackQuery = TrackQuery()) -> list[Track]: ...
+
+    def artists(self) -> list[ArtistSummary]: ...
+
+    def albums(self, artist: str | None = None) -> list[AlbumSummary]:
+        """Todos os álbuns ou, com `artist` (nome de exibição), só os desse artista."""
+
+    def genres(self) -> list[GenreSummary]: ...
 
 
 class DeviceRegistry(Protocol):

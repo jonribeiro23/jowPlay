@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 from ytdown.application.ports import DownloadedAudio
+from ytdown.domain import library
 from ytdown.domain.errors import InvalidCover
+from ytdown.domain.library import Track, TrackQuery
 from ytdown.domain.models import AudioFormat, Progress, Stage
 
 DEFAULT_COVER = b"capa-padrao"
@@ -51,6 +54,50 @@ class FakeTags:
 
     def write(self, path: Path, title: str, author: str, cover: bytes) -> None:
         self.calls.append((path.name, title, author, cover))
+
+
+class InMemoryTrackRepository:
+    """TrackRepository em memória, usando as funções de referência do domínio."""
+
+    def __init__(self) -> None:
+        self._tracks: dict[int, Track] = {}
+        self._next_id = 1
+
+    def add(self, track: Track) -> Track:
+        saved = replace(track, id=self._next_id)
+        self._tracks[saved.id] = saved
+        self._next_id += 1
+        return saved
+
+    def update(self, track: Track) -> None:
+        if track.id not in self._tracks:
+            raise KeyError(track.id)
+        self._tracks[track.id] = track
+
+    def remove(self, track_id: int) -> None:
+        self._tracks.pop(track_id, None)
+
+    def get(self, track_id: int) -> Track | None:
+        return self._tracks.get(track_id)
+
+    def find_by_source_url(self, url: str) -> Track | None:
+        return next((t for t in self._tracks.values() if t.source_url == url), None)
+
+    def find_by_path(self, rel_path: str) -> Track | None:
+        return next((t for t in self._tracks.values() if t.rel_path == rel_path), None)
+
+    def list_tracks(self, query: TrackQuery = TrackQuery()) -> list[Track]:
+        return library.query_tracks(self._tracks.values(), query)
+
+    def artists(self) -> list[library.ArtistSummary]:
+        return library.summarize_artists(self._tracks.values())
+
+    def albums(self, artist: str | None = None) -> list[library.AlbumSummary]:
+        tracks = [t for t in self._tracks.values() if artist is None or t.display_artist == artist]
+        return library.summarize_albums(tracks)
+
+    def genres(self) -> list[library.GenreSummary]:
+        return library.summarize_genres(self._tracks.values())
 
 
 class FakeDevices:
