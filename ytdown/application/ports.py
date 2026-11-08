@@ -87,6 +87,10 @@ class LibraryStorage(Protocol):
     def trash(self, rel_path: str) -> None:
         """Envia o arquivo para a Lixeira e apaga as pastas que ficarem vazias. Falha com LibraryError."""
 
+    def discard(self, rel_path: str) -> None:
+        """Apaga de vez um arquivo que o app acabou de colocar (para desfazer um `place`) e as
+        pastas que ficarem vazias. Não faz nada se ele não existir. Falha com LibraryError."""
+
     def relocate(self, new_root: Path, on_progress: Callable[[int, int], None]) -> dict[str, str]:
         """Move a biblioteca inteira para `new_root`, informando (movidos, total).
 

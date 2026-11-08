@@ -1,4 +1,4 @@
-"""Página "Extrair": extrai o áudio de uma ou várias URLs do YouTube.
+"""Página "Extrair": extrai o áudio de uma ou várias URLs do YouTube para a biblioteca.
 
 A extração roda em um QThread; o trabalho em segundo plano conversa com a página
 apenas por sinais Qt, que chegam à thread da interface.
@@ -12,7 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
-from PySide6.QtGui import QGuiApplication, QKeyEvent
+from PySide6.QtGui import QGuiApplication, QKeyEvent, QShowEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
@@ -31,7 +32,9 @@ from PySide6.QtWidgets import (
 )
 
 from ytdown.application.extraction import ExtractBatch
+from ytdown.application.library import RegisterExtractedTrack
 from ytdown.domain.errors import ShareError
+from ytdown.domain.library import DuplicatePolicy, Track
 from ytdown.domain.models import AUDIO_FORMATS, AudioFormat, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.domain.urls import parse_url_list
 from ytdown.presentation import texts
@@ -40,6 +43,26 @@ from ytdown.presentation.qt import theme
 COVER_FILTER = "Imagens (*.jpg *.jpeg *.png *.webp *.bmp *.gif);;Todos os arquivos (*.*)"
 EXTRACT_LABEL = "Extrair áudio"
 CANCEL_LABEL = "Cancelar"
+
+# Recebe os vídeos que já estão na biblioteca e devolve o que fazer, ou None para não extrair.
+AskDuplicates = Callable[[list[tuple[str, Track]]], DuplicatePolicy | None]
+
+
+def ask_duplicates_dialog(parent: QWidget) -> AskDuplicates:
+    """Pergunta com "Substituir", "Manter os dois" e "Cancelar" (Esc também cancela)."""
+
+    def ask(duplicates: list[tuple[str, Track]]) -> DuplicatePolicy | None:
+        box = QMessageBox(QMessageBox.Icon.Question, texts.DUPLICATE_TITLE, texts.duplicate_question(duplicates),
+                          parent=parent)
+        replace = box.addButton(texts.REPLACE_LABEL, QMessageBox.ButtonRole.DestructiveRole)
+        keep_both = box.addButton(texts.KEEP_BOTH_LABEL, QMessageBox.ButtonRole.AcceptRole)
+        cancel = box.addButton(texts.CANCEL_LABEL, QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(keep_both)  # O mais seguro: nada se perde.
+        box.setEscapeButton(cancel)
+        box.exec()
+        return {replace: DuplicatePolicy.REPLACE, keep_both: DuplicatePolicy.KEEP_BOTH}.get(box.clickedButton())
+
+    return ask
 
 
 class UrlBox(QPlainTextEdit):
@@ -73,16 +96,16 @@ class ExtractionThread(QThread):
     succeeded = Signal(object)  # list[BatchResult]
     failed = Signal(str)  # Erro antes de começar a fila (ex.: capa inválida).
 
-    def __init__(self, parent: QObject, extract_batch: ExtractBatch, urls, dest, audio_format, metadata,
+    def __init__(self, parent: QObject, extract_batch: ExtractBatch, urls, destination, audio_format, metadata,
                  cancel) -> None:
         super().__init__(parent)
-        self._job = (extract_batch, urls, dest, audio_format, metadata, cancel)
+        self._job = (extract_batch, urls, destination, audio_format, metadata, cancel)
 
     def run(self) -> None:
-        extract_batch, urls, dest, audio_format, metadata, cancel = self._job
+        extract_batch, urls, destination, audio_format, metadata, cancel = self._job
         try:
             results = extract_batch(
-                urls, dest, audio_format, metadata,
+                urls, destination, audio_format, metadata,
                 on_progress=self.progress.emit, on_result=self.item_done.emit, cancel=cancel,
             )
         except Exception as exc:  # Sem console: todo erro precisa aparecer na página.
@@ -92,19 +115,26 @@ class ExtractionThread(QThread):
 
 
 class ExtractPage(QWidget):
-    """`send_to_phone`, quando informado, recebe os arquivos salvos na última extração."""
+    """Cada áudio extraído entra na biblioteca (`library`).
+
+    `send_to_phone`, quando informado, recebe os arquivos salvos na última extração.
+    `ask_duplicates` decide o que fazer com vídeos que já estão na biblioteca; por padrão, pergunta.
+    """
 
     extraction_finished = Signal()
 
     def __init__(
         self,
         extract_batch: ExtractBatch,
+        library: RegisterExtractedTrack,
         send_to_phone: Callable[[list[Path]], None] | None = None,
-        default_destination: str | None = None,
+        ask_duplicates: AskDuplicates | None = None,
     ) -> None:
         super().__init__()
         self.setObjectName("page-extract")
         self._extract_batch = extract_batch
+        self._library = library
+        self._ask_duplicates = ask_duplicates or ask_duplicates_dialog(self)
         self._send_to_phone = send_to_phone
         self._cancel = threading.Event()
         self._thread: ExtractionThread | None = None
@@ -113,16 +143,22 @@ class ExtractPage(QWidget):
         self._running_format = AUDIO_FORMATS[0]
         self.saved_files: list[Path] = []
 
-        self._build(default_destination or texts.default_destination())
+        self._build()
         self._show(texts.Message(texts.WELCOME))
 
     # --- montagem
 
-    def _build(self, destination: str) -> None:
+    def _build(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*[theme.PAGE_MARGIN] * 4)
         layout.addWidget(self._title())
-        layout.addLayout(self._source_and_output(destination))
+        layout.addLayout(self._source_and_format())
+        self.library_info = QLabel()
+        self.library_info.setObjectName("libraryInfo")
+        self.library_info.setWordWrap(True)
+        self.library_info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(self.library_info)
+        self.refresh_library_folder()
         layout.addWidget(self._details())
         layout.addWidget(self._queue_list(), stretch=1)
         self.progress = QProgressBar()
@@ -145,7 +181,7 @@ class ExtractPage(QWidget):
         title.setObjectName("pageTitle")  # Tamanho e cor vêm do tema.
         return title
 
-    def _source_and_output(self, destination: str) -> QGridLayout:
+    def _source_and_format(self) -> QGridLayout:
         grid = QGridLayout()
         grid.setColumnStretch(0, 1)
         grid.addWidget(QLabel("URLs do YouTube (uma por linha)"), 0, 0, 1, 2)
@@ -162,14 +198,6 @@ class ExtractPage(QWidget):
         self.format_box = QComboBox()
         self.format_box.addItems([f.label for f in AUDIO_FORMATS])
         grid.addWidget(self.format_box, 3, 0, 1, 2)
-
-        grid.addWidget(QLabel("Salvar em"), 4, 0, 1, 2)
-        self.destination = QLineEdit(destination)
-        self.destination.returnPressed.connect(self.start)
-        grid.addWidget(self.destination, 5, 0)
-        self.browse_button = QPushButton("Procurar...")
-        self.browse_button.clicked.connect(self._choose_folder)
-        grid.addWidget(self.browse_button, 5, 1)
         return grid
 
     def _details(self) -> QGroupBox:
@@ -242,10 +270,21 @@ class ExtractPage(QWidget):
             pasted = "\n" + pasted
         self.urls.setPlainText((current if current.strip() else "") + pasted)
 
-    def _choose_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Salvar áudio em", self.destination.text())
-        if folder:
-            self.destination.setText(str(Path(folder)))
+    def refresh_library_folder(self) -> None:
+        """A pasta pode mudar nas Opções; a página mostra sempre a atual. Os áudios da última
+        extração foram junto, então "Mostrar arquivo" e o envio ao celular passam a usar o lugar novo.
+        """
+        folder = self._library.folder
+        previous = getattr(self, "_shown_folder", folder)
+        if folder != previous:
+            self.saved_files = [folder / path.relative_to(previous) if path.is_relative_to(previous) else path
+                                for path in self.saved_files]
+        self._shown_folder = folder
+        self.library_info.setText(texts.library_destination(str(folder)))
+
+    def showEvent(self, event: QShowEvent) -> None:
+        self.refresh_library_folder()
+        super().showEvent(event)
 
     def _choose_cover(self) -> None:
         image, _ = QFileDialog.getOpenFileName(self, "Escolher imagem de capa", "", COVER_FILTER)
@@ -273,14 +312,22 @@ class ExtractPage(QWidget):
             return
         urls, invalid_lines = parse_url_list(self.urls.toPlainText())
         problem = texts.url_problem(urls, invalid_lines)
-        dest = Path(self.destination.text().strip())
-        if problem is None and not dest.is_absolute():
-            problem = texts.INVALID_DESTINATION
         if problem:
             self._finish_progress(0)
             self._show(problem)
             return
 
+        # Pergunta uma vez, antes de baixar, o que fazer com vídeos que já estão na biblioteca.
+        policy = DuplicatePolicy.KEEP_BOTH
+        duplicates = self._library.find_duplicates(urls)
+        if duplicates:
+            policy = self._ask_duplicates(duplicates)
+            if policy is None:
+                self._finish_progress(0)
+                self._show(texts.NOTHING_EXTRACTED)
+                return
+
+        self.refresh_library_folder()
         self._cancel.clear()
         self.saved_files = []
         self._batch_size = len(urls)
@@ -289,7 +336,7 @@ class ExtractPage(QWidget):
         self._set_working(True)
         starting = Progress(Stage.STARTING)
         self._set_progress(starting, texts.progress_text(starting, self._running_format))
-        self._run_in_background(urls, dest, self._running_format, self._metadata())
+        self._run_in_background(urls, self._library.destination(policy), self._running_format, self._metadata())
 
     def cancel(self) -> None:
         if self.is_working():
@@ -326,8 +373,9 @@ class ExtractPage(QWidget):
 
     # --- trabalho em segundo plano
 
-    def _run_in_background(self, urls, dest, audio_format, metadata) -> None:
-        self._thread = ExtractionThread(self, self._extract_batch, urls, dest, audio_format, metadata, self._cancel)
+    def _run_in_background(self, urls, destination, audio_format, metadata) -> None:
+        self._thread = ExtractionThread(self, self._extract_batch, urls, destination, audio_format, metadata,
+                                        self._cancel)
         self._thread.progress.connect(self._on_progress)
         self._thread.item_done.connect(self._on_item_done)
         self._thread.succeeded.connect(self._on_finished)
@@ -377,7 +425,7 @@ class ExtractPage(QWidget):
         self.show_file_button.setEnabled(bool(self.saved_files))
         self.send_button.setEnabled(bool(self.saved_files))
         self._finish_progress(texts.processed_percent(results))
-        self._show(texts.result_summary(results, self.destination.text().strip()))
+        self._show(texts.result_summary(results, str(self._library.folder)))
         self.extraction_finished.emit()
 
     @Slot(str)
@@ -415,8 +463,8 @@ class ExtractPage(QWidget):
 
     def _set_working(self, working: bool) -> None:
         self._working = working
-        for widget in (self.urls, self.paste_button, self.format_box, self.destination, self.browse_button,
-                       self.artist_field, self.cover_field, self.cover_button):
+        for widget in (self.urls, self.paste_button, self.format_box, self.artist_field, self.cover_field,
+                       self.cover_button):
             widget.setEnabled(not working)
         self.main_button.setText(CANCEL_LABEL if working else EXTRACT_LABEL)
         self.main_button.setEnabled(True)

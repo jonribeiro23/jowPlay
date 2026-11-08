@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
-from PySide6.QtWidgets import QMainWindow, QSplitter, QStackedWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QMainWindow, QSplitter, QStackedWidget, QToolButton, QVBoxLayout, QWidget
 
+from ytdown.presentation import texts
+from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.navigation import NavigationPane
 from ytdown.presentation.qt.pages import PageId, PlaceholderPage
 from ytdown.presentation.qt.play_queue_pane import PlayQueuePane
@@ -22,6 +25,8 @@ PageFactory = Callable[[PageId], QWidget]
 
 
 class MainWindow(QMainWindow):
+    options_requested = Signal()
+
     def __init__(self, page_factory: PageFactory = PlaceholderPage) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
@@ -30,6 +35,15 @@ class MainWindow(QMainWindow):
         self.resize(*DEFAULT_SIZE)
 
         self.navigation = NavigationPane()
+        self.options_button = QToolButton()
+        self.options_button.setObjectName("optionsButton")
+        self.options_button.setText(texts.OPTIONS_TITLE)
+        self.options_button.setIcon(theme.icon("options"))
+        size = theme.METRICS["nav_icon_size"]
+        self.options_button.setIconSize(QSize(size, size))
+        self.options_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.options_button.setToolTip("Pasta da biblioteca e outras preferências")
+        self.options_button.clicked.connect(self.options_requested)
         self.pages = QStackedWidget()
         self.pages.setObjectName("pages")
         self._page_index: dict[PageId, int] = {}
@@ -38,10 +52,20 @@ class MainWindow(QMainWindow):
         self.play_queue = PlayQueuePane()
         self.transport = TransportBar()
 
+        # A coluna da esquerda: a árvore e, embaixo, o botão de Opções.
+        self.side_pane = QWidget()
+        self.side_pane.setObjectName("sidePane")
+        self.side_pane.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        side = QVBoxLayout(self.side_pane)
+        side.setContentsMargins(0, 0, 0, theme.PANE_MARGIN)
+        side.setSpacing(0)
+        side.addWidget(self.navigation, stretch=1)
+        side.addWidget(self.options_button)
+
         self.splitter = QSplitter()
         self.splitter.setObjectName("mainSplitter")
         self.splitter.setChildrenCollapsible(False)
-        for widget in (self.navigation, self.pages, self.play_queue):
+        for widget in (self.side_pane, self.pages, self.play_queue):
             self.splitter.addWidget(widget)
         self.splitter.setStretchFactor(1, 1)  # Ao redimensionar, só o conteúdo cresce.
         self.splitter.setSizes(list(SPLITTER_SIZES))

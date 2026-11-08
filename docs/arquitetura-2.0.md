@@ -71,7 +71,12 @@ A tabela `tracks` também guarda colunas derivadas (nomes de exibição, textos 
 
 ## Fluxos principais
 
-- **Extrair:** baixa na pasta temporária, grava as etiquetas, move para `Artista\Álbum\NN - Título.ext` na biblioteca e registra no banco.
+- **Extrair:** baixa na pasta temporária, grava as etiquetas, move para `Artista\Álbum\NN - Título.ext` na biblioteca e registra no banco (`RegisterExtractedTrack`, JOW-19).
+  - A extração entrega o arquivo a um *destino* (`AudioDestination`): `RegisterExtractedTrack.destination()` na interface Qt, `SaveToFolder` na interface 1.x.
+  - **Duplicatas:** antes de baixar, cada link é convertido no endereço canônico (`domain/urls.canonical_video_url`, igual ao `webpage_url` do yt-dlp) e procurado no banco. A pergunta (substituir, manter os dois, cancelar) é feita uma vez para a fila. *Substituir* mantém a faixa (id, data de inclusão, reproduções), usa o arquivo novo e manda o antigo para a Lixeira.
+  - **Sem órfãos:** se o banco recusar a faixa, o arquivo recém-colocado é apagado (`LibraryStorage.discard`).
+  - **Threads:** a extração registra a faixa fora da thread da interface; o `SqliteTrackRepository` serializa as operações com uma trava (`check_same_thread=False`).
+  - **Pasta:** fica nas **Opções** (`presentation/qt/options_dialog.py`), que usa o `ChangeLibraryFolder` e não deixa mudar durante uma extração.
 - **Editar propriedades:** regrava as etiquetas, move o arquivo se o artista, o álbum ou o título mudou, e atualiza o banco.
 - **Tocar:** `Playback` monta a fila a partir da seleção e pede ao `AudioPlayer` a faixa atual. Ao passar de metade da faixa (ou de 4 minutos), conta uma reprodução.
 - **Abrir o app:** `CheckLibrary` marca como indisponíveis as faixas cujo arquivo sumiu.

@@ -71,6 +71,28 @@ class PlaceTests(StorageTestCase):
         self.assertLessEqual(len(str(storage.absolute(final))), WINDOWS_MAX_PATH)
 
 
+class DiscardTests(StorageTestCase):
+    def test_deletes_the_file_for_good_and_the_empty_folders(self):
+        rel = self.in_library("Artista/Álbum/faixa.mp3")
+        self.storage.discard(rel)
+        self.assertFalse(self.storage.absolute(rel).exists())
+        self.assertEqual(self.trashed, [])  # Não passa pela Lixeira: é um arquivo que o app acabou de pôr.
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_keeps_folders_that_still_have_files(self):
+        rel = self.in_library("Artista/Álbum/faixa.mp3")
+        self.in_library("Artista/Álbum/outra.mp3")
+        self.storage.discard(rel)
+        self.assertTrue((self.root / "Artista" / "Álbum" / "outra.mp3").exists())
+
+    def test_missing_file_is_not_an_error(self):
+        self.storage.discard("Artista/Álbum/nao-existe.mp3")
+
+    def test_refuses_paths_outside_the_library(self):
+        with self.assertRaises(LibraryError):
+            self.storage.discard("../fora.mp3")
+
+
 class MoveTests(StorageTestCase):
     def test_moves_and_removes_folders_left_empty(self):
         rel = self.in_library("Ana/Sol/x.mp3")

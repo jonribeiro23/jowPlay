@@ -79,7 +79,9 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
-A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração e o envio para o celular já estão na página "Extrair" da interface Qt. Até a JOW-21, `main.py --legacy` ainda abre a interface Tkinter da versão 1.x.
+A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração e o envio para o celular já estão na página "Extrair" da interface Qt. Até a JOW-21, `main.py --legacy` ainda abre a interface Tkinter da versão 1.x, que continua salvando numa pasta escolhida.
+
+Na interface Qt, todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`, com o índice em `%APPDATA%\ytDown\library.db`. A pasta pode ser trocada em **Opções** (embaixo da árvore); os áudios vão junto. Ao extrair de novo um vídeo que já está na biblioteca, o app pergunta se deve substituir, manter os dois ou cancelar.
 
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)

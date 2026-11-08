@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 
+from ytdown.domain.library import Track
 from ytdown.domain.models import AudioFormat, BatchResult, Progress, Stage
 from ytdown.domain.sharing import TransferStatus
 
@@ -150,3 +151,49 @@ def pairing_code(code: str) -> str:
 
 def default_destination() -> str:
     return str(Path.home() / "Downloads")
+
+
+# --- biblioteca
+
+DUPLICATE_TITLE = "Já está na biblioteca"
+REPLACE_LABEL = "Substituir"
+KEEP_BOTH_LABEL = "Manter os dois"
+CANCEL_LABEL = "Cancelar"
+NOTHING_EXTRACTED = Message("Nada foi extraído.")
+MAX_DUPLICATES_SHOWN = 5
+
+
+def library_destination(folder: str) -> str:
+    return (f"Os áudios vão para a biblioteca, organizados em Artista\\Álbum, na pasta:\n{folder}\n"
+            "Para mudar a pasta, use Opções.")
+
+
+def duplicate_question(duplicates: list[tuple[str, Track]]) -> str:
+    """Pergunta única para os vídeos da fila que já estão na biblioteca."""
+    names = [f"• {track.title} ({track.display_artist})" for _, track in duplicates[:MAX_DUPLICATES_SHOWN]]
+    if len(duplicates) > MAX_DUPLICATES_SHOWN:
+        names.append(f"• e mais {len(duplicates) - MAX_DUPLICATES_SHOWN}.")
+    intro = ("Este vídeo já está na biblioteca:" if len(duplicates) == 1
+             else f"{len(duplicates)} vídeos já estão na biblioteca:")
+    return (f"{intro}\n" + "\n".join(names) + "\n\n"
+            f"{REPLACE_LABEL}: o áudio novo fica no lugar do antigo (que vai para a Lixeira).\n"
+            f"{KEEP_BOTH_LABEL}: o áudio novo entra na biblioteca ao lado do antigo.\n"
+            f"{CANCEL_LABEL}: nada é extraído.")
+
+
+OPTIONS_TITLE = "Opções"
+LIBRARY_FOLDER_LABEL = "Pasta da biblioteca"
+LIBRARY_FOLDER_HINT = ("Todo áudio extraído é guardado aqui, em Artista\\Álbum. "
+                       "Ao mudar a pasta, os áudios que já estão na biblioteca vão junto.")
+WAIT_FOR_EXTRACTION = Message("Espere a extração terminar para mudar a pasta da biblioteca.", Tone.ERROR)
+
+
+def moving_library(done: int, total: int) -> str:
+    return f"Movendo a biblioteca... {done} de {total} arquivos"
+
+
+LIBRARY_MOVED = Message("Pronto! A biblioteca foi movida para a pasta acima.", Tone.SUCCESS)
+
+
+def library_move_failed(reason: str) -> Message:
+    return Message(f"A biblioteca não foi movida; nada mudou.\n{reason}", Tone.ERROR)

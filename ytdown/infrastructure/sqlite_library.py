@@ -8,8 +8,10 @@ resultados são iguais aos das funções de referência em ytdown.domain.library
 
 from __future__ import annotations
 
+import functools
 import os
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -183,17 +185,29 @@ def _track(row: sqlite3.Row) -> Track:
     )
 
 
+def _locked(method):
+    """Uma operação por vez na conexão, venha de que thread vier."""
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
 class SqliteTrackRepository:
     """Implementa TrackRepository.
 
-    Cada instância usa uma conexão, que só pode ser usada pela thread que a criou;
-    trabalhos em segundo plano devem abrir a sua própria instância.
+    Pode ser usado por várias threads (a extração registra faixas fora da thread da
+    interface): cada operação roda inteira, uma de cada vez, na mesma conexão.
     """
 
     def __init__(self, path: Path, migrations: list[tuple[int, str]] = MIGRATIONS) -> None:
+        self._lock = threading.RLock()
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            self._db = sqlite3.connect(path)
+            self._db = sqlite3.connect(path, check_same_thread=False)
             self._db.row_factory = sqlite3.Row
             # WAL: uma importação pode gravar enquanto a interface lê.
             self._db.execute("PRAGMA journal_mode = WAL")
@@ -202,10 +216,12 @@ class SqliteTrackRepository:
         except sqlite3.Error as exc:
             raise LibraryError(f"Não foi possível abrir a biblioteca em {path}: {exc}") from exc
 
+    @_locked
     def close(self) -> None:
         self._db.close()
 
     @property
+    @_locked
     def schema_version(self) -> int:
         return self._db.execute("SELECT version FROM schema_version").fetchone()[0]
 
@@ -235,6 +251,7 @@ class SqliteTrackRepository:
 
     # --- gravação
 
+    @_locked
     def add(self, track: Track) -> Track:
         values = _values(track)
         columns = ", ".join(values)
@@ -246,6 +263,7 @@ class SqliteTrackRepository:
             raise ValueError(f"Já existe uma faixa em {track.rel_path}") from exc
         return self.get(cursor.lastrowid)
 
+    @_locked
     def update(self, track: Track) -> None:
         values = _values(track)
         assignments = ", ".join(f"{name} = :{name}" for name in values)
@@ -254,21 +272,26 @@ class SqliteTrackRepository:
         if cursor.rowcount == 0:
             raise KeyError(track.id)
 
+    @_locked
     def remove(self, track_id: int) -> None:
         with self._db:
             self._db.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
 
     # --- consultas
 
+    @_locked
     def get(self, track_id: int) -> Track | None:
         return self._one("SELECT {columns} FROM tracks WHERE id = ?", track_id)
 
+    @_locked
     def find_by_source_url(self, url: str) -> Track | None:
         return self._one("SELECT {columns} FROM tracks WHERE source_url = ? ORDER BY id LIMIT 1", url)
 
+    @_locked
     def find_by_path(self, rel_path: str) -> Track | None:
         return self._one("SELECT {columns} FROM tracks WHERE rel_path = ?", rel_path)
 
+    @_locked
     def list_tracks(self, query: TrackQuery = TrackQuery()) -> list[Track]:
         conditions, params = [], []
         if not query.include_missing:
@@ -296,6 +319,7 @@ class SqliteTrackRepository:
     # Resumos em SQL, equivalentes a library.summarize_*. Nos empates de nome
     # normalizado (ex.: "Rock" e "rock"), vale o grupo que apareceu primeiro (menor id).
 
+    @_locked
     def albums(self, artist: str | None = None) -> list[AlbumSummary]:
         where, params = ("WHERE artist_display = ?", (artist,)) if artist is not None else ("", ())
         rows = self._db.execute(f"{_ALBUMS_SQL.format(where=where)} ORDER BY {_ALBUM_ORDER}", params)
@@ -305,6 +329,7 @@ class SqliteTrackRepository:
             for row in rows
         ]
 
+    @_locked
     def artists(self) -> list[ArtistSummary]:
         sql = f"""
             WITH albums AS ({_ALBUMS_SQL.format(where="")}),
@@ -325,6 +350,7 @@ class SqliteTrackRepository:
             for row in self._db.execute(sql)
         ]
 
+    @_locked
     def genres(self) -> list[GenreSummary]:
         sql = """
             SELECT genre_display, COUNT(*) AS track_count, SUM(duration_ms) AS total_duration_ms

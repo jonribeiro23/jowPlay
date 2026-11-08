@@ -8,10 +8,17 @@ from tests.qt_support import dispose, qt_app, wait_until
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
+from datetime import datetime
+
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication
+
+from tests.fakes import FakeLibrary
 from ytdown.domain.errors import InvalidCover
+from ytdown.domain.library import DuplicatePolicy, Track
 from ytdown.domain.models import AUDIO_FORMATS, BatchResult, Progress, Stage
 from ytdown.presentation import texts
-from ytdown.presentation.qt.extract_page import CANCEL_LABEL, EXTRACT_LABEL, ExtractPage
+from ytdown.presentation.qt.extract_page import CANCEL_LABEL, EXTRACT_LABEL, ExtractPage, ask_duplicates_dialog
 from ytdown.presentation.qt.main_window import MainWindow
 from ytdown.presentation.qt.pages import PageId, PlaceholderPage
 
@@ -27,8 +34,8 @@ class FakeBatch:
         self.calls = []
         self.blocked = threading.Event()
 
-    def __call__(self, urls, dest, audio_format, metadata, on_progress, on_result, cancel):
-        self.calls.append((urls, dest, audio_format, metadata))
+    def __call__(self, urls, destination, audio_format, metadata, on_progress, on_result, cancel):
+        self.calls.append((urls, destination, audio_format, metadata))
         if self.error_before_start:
             raise self.error_before_start
         results = []
@@ -44,7 +51,7 @@ class FakeBatch:
                 elif url in self.fail:
                     result = BatchResult(url, error="[youtube] video: This video is unavailable")
                 else:
-                    result = BatchResult(url, path=dest / f"video {index + 1}.mp3")
+                    result = BatchResult(url, path=destination.folder / f"video {index + 1}.mp3")
             results.append(result)
             on_result(index, result)
         return results
@@ -55,9 +62,16 @@ class ExtractPageTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt_app()
 
-    def make_page(self, batch=None, send_to_phone=None):
+    def make_page(self, batch=None, send_to_phone=None, library=None, ask=None):
         self.batch = batch or FakeBatch()
-        page = ExtractPage(self.batch, send_to_phone=send_to_phone, default_destination=str(DEST))
+        self.library = library or FakeLibrary()
+        self.asked = []
+
+        def record_and_answer(duplicates):
+            self.asked.append(duplicates)
+            return ask(duplicates) if ask else DuplicatePolicy.KEEP_BOTH
+
+        page = ExtractPage(self.batch, self.library, send_to_phone=send_to_phone, ask_duplicates=record_and_answer)
         page.show()
         self.addCleanup(dispose, page)  # As limpezas rodam em ordem inversa: primeiro para a extração.
         self.addCleanup(self.stop_extraction, page)
@@ -88,13 +102,49 @@ class ExtractPageTests(unittest.TestCase):
         page.main_button.click()
         self.assertEqual(page.status.text(), "Cole a URL de pelo menos um vídeo do YouTube.")
 
-    def test_destination_must_be_a_full_path(self):
+    # --- biblioteca
+
+    def test_there_is_no_folder_to_choose_the_library_folder_is_shown(self):
         page = self.make_page()
-        page.destination.setText("pasta relativa")
+        self.assertFalse(hasattr(page, "destination"))
+        self.assertIn(str(DEST), page.library_info.text())
+        self.library.folder = Path("D:/Nova")  # Mudou nas Opções.
+        page.refresh_library_folder()
+        self.assertIn(str(Path("D:/Nova")), page.library_info.text())
+
+    def test_saved_files_follow_the_library_to_its_new_folder(self):
+        sent = []
+        page = self.make_page(send_to_phone=sent.append)
+        self.run_extraction(page, URL_1, URL_2)
+        self.library.folder = Path("D:/Nova")
+        page.refresh_library_folder()
+        self.assertEqual(page.saved_files, [Path("D:/Nova/video 1.mp3"), Path("D:/Nova/video 2.mp3")])
+        page.send_button.click()
+        self.assertEqual(sent, [page.saved_files])
+
+    def test_without_duplicates_nothing_is_asked(self):
+        page = self.make_page()
+        self.run_extraction(page, URL_1, URL_2)
+        self.assertEqual(self.asked, [])
+        self.assertEqual(self.batch.calls[0][1].policy, DuplicatePolicy.KEEP_BOTH)
+        self.assertIn(f"áudios salvos em:\n{DEST}", page.status.text())
+
+    def test_duplicates_are_asked_once_before_extracting(self):
+        old = Track(rel_path="a/b/c.mp3", title="Antiga", added_at=datetime(2025, 1, 1))
+        library = FakeLibrary(duplicates={URL_1: old, URL_3: old})
+        page = self.make_page(library=library, ask=lambda duplicates: DuplicatePolicy.REPLACE)
+        self.run_extraction(page, URL_1, URL_2, URL_3)
+        self.assertEqual(self.asked, [[(URL_1, old), (URL_3, old)]])
+        self.assertEqual(self.batch.calls[0][1].policy, DuplicatePolicy.REPLACE)
+
+    def test_cancelling_the_duplicate_question_extracts_nothing(self):
+        old = Track(rel_path="a/b/c.mp3", title="Antiga", added_at=datetime(2025, 1, 1))
+        page = self.make_page(library=FakeLibrary(duplicates={URL_1: old}), ask=lambda duplicates: None)
         page.urls.setPlainText(URL_1)
         page.main_button.click()
-        self.assertEqual(page.status.text(), texts.INVALID_DESTINATION.text)
         self.assertEqual(self.batch.calls, [])
+        self.assertFalse(page.is_working())
+        self.assertEqual(page.status.text(), texts.NOTHING_EXTRACTED.text)
 
     # --- um vídeo
 
@@ -106,8 +156,8 @@ class ExtractPageTests(unittest.TestCase):
         page.cover_field.setText('"C:/capa.png"')
         self.run_extraction(page, URL_1)
 
-        urls, dest, audio_format, metadata = self.batch.calls[0]
-        self.assertEqual((urls, dest, audio_format), ([URL_1], DEST, AUDIO_FORMATS[4]))
+        urls, destination, audio_format, metadata = self.batch.calls[0]
+        self.assertEqual((urls, destination.folder, audio_format), ([URL_1], DEST, AUDIO_FORMATS[4]))
         self.assertEqual((metadata.title, metadata.artist, metadata.cover), ("Meu nome", "Eu", Path("C:/capa.png")))
         self.assertTrue(page.status.text().startswith("Pronto! Áudio salvo em:"))
         self.assertFalse(page.queue.isVisible())
@@ -202,7 +252,8 @@ class ClosingDuringExtractionTests(unittest.TestCase):
                 super().closeEvent(event)
                 accepted.append(event.isAccepted())
 
-        window = RecordingWindow(lambda p: ExtractPage(batch) if p is PageId.EXTRACT else PlaceholderPage(p))
+        window = RecordingWindow(lambda p: ExtractPage(batch, FakeLibrary()) if p is PageId.EXTRACT
+                                 else PlaceholderPage(p))
         window.show()
         page = window.page(PageId.EXTRACT)
         self.addCleanup(dispose, window)
@@ -216,6 +267,33 @@ class ClosingDuringExtractionTests(unittest.TestCase):
         self.assertFalse(window.isVisible())
         self.assertTrue(wait_until(lambda: accepted == [False, True], 5000))  # Fechou ao terminar.
         self.assertFalse(page.is_working())
+
+
+class DuplicateQuestionTests(unittest.TestCase):
+    """A pergunta de verdade (QMessageBox), respondida por um clique."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt_app()
+
+    def answer(self, button_text):
+        def click():
+            box = QApplication.activeModalWidget()
+            self.seen.append(box.text())
+            next(b for b in box.buttons() if b.text() == button_text).click()
+
+        self.seen = []
+        QTimer.singleShot(0, click)
+        old = Track(rel_path="a/b/c.mp3", title="Me at the zoo", added_at=datetime(2025, 1, 1), artist="jawed")
+        return ask_duplicates_dialog(None)([(URL_1, old)])
+
+    def test_each_button_gives_its_choice(self):
+        for label, expected in ((texts.REPLACE_LABEL, DuplicatePolicy.REPLACE),
+                                (texts.KEEP_BOTH_LABEL, DuplicatePolicy.KEEP_BOTH),
+                                (texts.CANCEL_LABEL, None)):
+            with self.subTest(label):
+                self.assertEqual(self.answer(label), expected)
+                self.assertIn("Me at the zoo (jawed)", self.seen[0])
 
 
 if __name__ == "__main__":

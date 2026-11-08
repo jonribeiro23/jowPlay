@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import DEFAULT_COVER, SOURCE_URL, FakeCovers, FakeDownloader, FakeTags
-from ytdown.application.extraction import ExtractAudio
+from ytdown.application.extraction import ExtractAudio, SaveToFolder
 from ytdown.domain.errors import ExtractionCancelled, ExtractionError, InvalidCover
 from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, AudioTags, Stage
 
@@ -25,7 +25,7 @@ class ExtractAudioTests(unittest.TestCase):
     def run_extract(self, metadata=AudioMetadata(), dest=None, cancel=None):
         return self.extract(
             "https://youtu.be/x",
-            dest or self.dest,
+            SaveToFolder(dest or self.dest),
             MP3,
             metadata,
             lambda progress: self.stages.append(progress.stage),
@@ -66,6 +66,19 @@ class ExtractAudioTests(unittest.TestCase):
         with self.assertRaises(InvalidCover):
             self.run_extract(AudioMetadata(cover=Path("nao-existe.png")))
         self.assertEqual(self.downloader.calls, [])
+
+    def test_destination_receives_the_tagged_file_and_the_tags(self):
+        received = []
+
+        class RecordingDestination:
+            def save(self, file, tags):
+                received.append((file.name, file.exists(), tags.title, tags.source_url))
+                return Path("onde/ficou.mp3")
+
+        path = self.extract("https://youtu.be/x", RecordingDestination(), MP3, AudioMetadata(), lambda p: None,
+                            threading.Event())
+        self.assertEqual(path, Path("onde/ficou.mp3"))
+        self.assertEqual(received, [("video.mp3", True, "video", SOURCE_URL)])
 
     def test_creates_missing_destination(self):
         self.assertTrue(self.run_extract(dest=self.dest / "nova" / "pasta").exists())

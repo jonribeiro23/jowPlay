@@ -11,7 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, ttk
 
-from ytdown.application.extraction import ExtractBatch
+from ytdown.application.extraction import ExtractBatch, SaveToFolder
 from ytdown.domain.errors import ShareError
 from ytdown.domain.models import AUDIO_FORMATS, AudioFormat, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.domain.urls import parse_url_list
@@ -285,7 +285,7 @@ class MainWindow:
         try:
             results = self._extract_batch(
                 urls,
-                dest,
+                SaveToFolder(dest),  # A interface 1.x salva numa pasta comum, fora da biblioteca.
                 audio_format,
                 metadata,
                 on_progress=lambda index, progress: self.events.put(("progress", (index, progress))),

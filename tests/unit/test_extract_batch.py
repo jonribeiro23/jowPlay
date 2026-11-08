@@ -8,6 +8,7 @@ from ytdown.domain.errors import ExtractionCancelled, ExtractionError, InvalidCo
 from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, Progress, Stage
 
 MP3 = AUDIO_FORMATS[0]
+DESTINATION = object()  # O ExtractBatch só repassa o destino a cada extração.
 
 
 class FakeExtract:
@@ -16,9 +17,11 @@ class FakeExtract:
     def __init__(self, outcomes: dict) -> None:
         self.outcomes = outcomes
         self.calls: list[tuple[str, AudioMetadata]] = []
+        self.destinations: list = []
 
-    def __call__(self, url, dest, audio_format, metadata, on_progress, cancel):
+    def __call__(self, url, destination, audio_format, metadata, on_progress, cancel):
         self.calls.append((url, metadata))
+        self.destinations.append(destination)
         on_progress(Progress(Stage.DOWNLOADING, 50))
         outcome = self.outcomes[url]
         if callable(outcome):
@@ -35,7 +38,7 @@ class ExtractBatchTests(unittest.TestCase):
         batch = ExtractBatch(self.extract, covers or FakeCovers())
         return batch(
             list(outcomes),
-            Path("destino"),
+            DESTINATION,
             MP3,
             metadata,
             on_progress=lambda index, progress: self.progress.append((index, progress.stage)),
@@ -49,6 +52,7 @@ class ExtractBatchTests(unittest.TestCase):
         self.assertEqual([url for url, _ in self.extract.calls], ["u1", "u2"])
         self.assertEqual(self.progress, [(0, Stage.DOWNLOADING), (1, Stage.DOWNLOADING)])
         self.assertEqual([index for index, _ in self.reported], [0, 1])
+        self.assertEqual(self.extract.destinations, [DESTINATION, DESTINATION])
 
     def test_a_failure_does_not_stop_the_rest(self):
         results = self.run_batch({"u1": ExtractionError("indisponível"), "u2": RuntimeError("estranho"), "u3": "c.mp3"})

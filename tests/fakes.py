@@ -8,9 +8,9 @@ from pathlib import Path
 
 from ytdown.application.ports import DownloadedAudio
 from ytdown.domain import library
-from ytdown.domain.errors import InvalidCover
-from ytdown.domain.library import Track, TrackQuery
-from ytdown.domain.models import AudioFormat, AudioTags, Progress, Stage
+from ytdown.domain.errors import InvalidCover, LibraryError, UnreadableAudio
+from ytdown.domain.library import DuplicatePolicy, Track, TrackQuery
+from ytdown.domain.models import AudioFileInfo, AudioFormat, AudioTags, Progress, Stage
 
 DEFAULT_COVER = b"capa-padrao"
 SOURCE_URL = "https://www.youtube.com/watch?v=video"
@@ -55,6 +55,101 @@ class FakeTags:
 
     def write(self, path: Path, tags: AudioTags) -> None:
         self.calls.append((path.name, tags))
+
+
+class FakeReader:
+    """MetadataReader que só informa a duração (ou falha, se `unreadable`)."""
+
+    def __init__(self, duration_ms: int = 180_000, unreadable: bool = False) -> None:
+        self.duration_ms = duration_ms
+        self.unreadable = unreadable
+
+    def read(self, path: Path) -> AudioFileInfo:
+        if self.unreadable:
+            raise UnreadableAudio(f"Formato não suportado: {path.name}")
+        return AudioFileInfo(duration_ms=self.duration_ms)
+
+    def read_cover(self, path: Path) -> bytes | None:
+        return None
+
+
+class FakeLibraryStorage:
+    """LibraryStorage em memória: guarda o conteúdo de cada arquivo pelo caminho relativo.
+    Como o real, nunca sobrescreve: um nome ocupado ganha " (1)", " (2)"...
+    """
+
+    def __init__(self, root: Path = Path("C:/Musica/ytDown"), max_length: int = 200) -> None:
+        self._root = root
+        self.max_length = max_length
+        self.files: dict[str, bytes] = {}
+        self.trashed: list[str] = []
+        self.discarded: list[str] = []
+        self.fail_trash = False
+
+    @property
+    def root(self) -> Path:
+        return self._root
+
+    def absolute(self, rel_path: str) -> Path:
+        return self._root.joinpath(*rel_path.split("/"))
+
+    def exists(self, rel_path: str) -> bool:
+        return rel_path in self.files
+
+    def max_relative_length(self) -> int:
+        return self.max_length
+
+    def place(self, source: Path, rel_path: str) -> str:
+        final = self._free_name(rel_path)
+        self.files[final] = source.read_bytes()
+        source.unlink()
+        return final
+
+    def move(self, rel_path: str, new_rel_path: str) -> str:
+        content = self.files.pop(rel_path)
+        final = self._free_name(new_rel_path)
+        self.files[final] = content
+        return final
+
+    def trash(self, rel_path: str) -> None:
+        if self.fail_trash:
+            raise LibraryError(f"Não foi possível enviar {rel_path} para a Lixeira: em uso")
+        del self.files[rel_path]
+        self.trashed.append(rel_path)
+
+    def discard(self, rel_path: str) -> None:
+        self.files.pop(rel_path, None)
+        self.discarded.append(rel_path)
+
+    def relocate(self, new_root, on_progress):
+        raise NotImplementedError
+
+    def _free_name(self, rel_path: str) -> str:
+        stem, dot, suffix = rel_path.rpartition(".")
+        candidate, counter = rel_path, 1
+        while candidate in self.files:
+            candidate = f"{stem} ({counter}){dot}{suffix}"
+            counter += 1
+        return candidate
+
+
+class FakeDestination:
+    def __init__(self, folder: Path, policy: DuplicatePolicy) -> None:
+        self.folder, self.policy = folder, policy
+
+
+class FakeLibrary:
+    """Imita o RegisterExtractedTrack no que a página usa: pasta, duplicatas e destino."""
+
+    def __init__(self, folder=Path("C:/Musica"), duplicates=None):
+        self.folder = folder
+        self.duplicates = duplicates or {}  # url -> Track
+
+    def find_duplicates(self, urls):
+        return [(url, self.duplicates[url]) for url in urls if url in self.duplicates]
+
+    def destination(self, on_duplicate=DuplicatePolicy.KEEP_BOTH):
+        return FakeDestination(self.folder, on_duplicate)
 
 
 class InMemoryTrackRepository:

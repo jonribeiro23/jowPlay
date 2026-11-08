@@ -1,6 +1,40 @@
 import unittest
 
-from ytdown.domain.urls import is_youtube_url, parse_url_list
+from ytdown.domain.urls import canonical_video_url, is_youtube_url, parse_url_list, video_id
+
+
+class CanonicalVideoUrlTests(unittest.TestCase):
+    """Igual ao `webpage_url` do yt-dlp, para achar duplicatas antes de baixar."""
+
+    def test_every_link_form_gives_the_same_address(self):
+        for url in (
+            "https://youtu.be/jNQXAC9IVRw",
+            "https://youtu.be/jNQXAC9IVRw?si=abc&t=10",
+            "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+            "https://youtube.com/watch?feature=share&v=jNQXAC9IVRw&list=PL123",
+            "https://m.youtube.com/watch?v=jNQXAC9IVRw",
+            "https://music.youtube.com/watch?v=jNQXAC9IVRw",
+            "https://www.youtube.com/shorts/jNQXAC9IVRw",
+            "https://www.youtube.com/live/jNQXAC9IVRw?feature=share",
+            "https://www.youtube.com/embed/jNQXAC9IVRw",
+            "  https://youtu.be/jNQXAC9IVRw  ",
+        ):
+            with self.subTest(url):
+                self.assertEqual(canonical_video_url(url), "https://www.youtube.com/watch?v=jNQXAC9IVRw")
+
+    def test_links_without_a_video_have_no_address(self):
+        for url in (
+            "https://www.youtube.com/playlist?list=PL123",
+            "https://www.youtube.com/@canal",
+            "https://www.youtube.com/watch",
+            "https://www.youtube.com/watch?v=curto",
+            "https://youtu.be/",
+            "https://example.com/watch?v=jNQXAC9IVRw",
+            "não é url",
+        ):
+            with self.subTest(url):
+                self.assertIsNone(canonical_video_url(url))
+                self.assertIsNone(video_id(url))
 
 
 class IsYoutubeUrlTests(unittest.TestCase):

@@ -73,6 +73,28 @@ QTreeWidget#navigation {
     show-decoration-selected: 0;
 }
 
+QWidget#sidePane {
+    background: {{nav}};
+}
+
+QToolButton#optionsButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: {{radius}};
+    color: {{text_muted}};
+    padding: {{space_xs}} {{space_s}};
+    margin: 0 {{space_xs}};
+}
+
+QToolButton#optionsButton:hover {
+    background: {{surface_alt}};
+    color: {{text}};
+}
+
+QToolButton#optionsButton:focus {
+    border-color: {{focus}};
+}
+
 /* O Qt pinta a linha inteira com o realce do item; só uma cor sólida no recuo o esconde. */
 QTreeWidget#navigation::branch {
     background: {{nav}};

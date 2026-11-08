@@ -8,6 +8,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Protocol
 
 from ytdown.application.ports import AudioDownloader, CoverLoader, DownloadedAudio, ProgressCallback, TagWriter
 from ytdown.domain.errors import ExtractionCancelled, ExtractionError
@@ -24,8 +25,31 @@ def unique_path(path: Path) -> Path:
     return candidate
 
 
+class AudioDestination(Protocol):
+    """Para onde vai o áudio pronto (já com as etiquetas)."""
+
+    def save(self, file: Path, tags: AudioTags) -> Path:
+        """Move `file` para o destino e devolve onde ele ficou. Falha com ExtractionError."""
+
+
+class SaveToFolder:
+    """Salva numa pasta qualquer, com o nome do arquivo baixado e sem substituir arquivos."""
+
+    def __init__(self, folder: Path) -> None:
+        self.folder = folder
+
+    def save(self, file: Path, tags: AudioTags) -> Path:
+        try:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            target = unique_path(self.folder / file.name)
+            shutil.move(file, target)
+        except OSError as exc:
+            raise ExtractionError(f"Não foi possível salvar em {self.folder}: {exc}") from exc
+        return target
+
+
 class ExtractAudio:
-    """Extrai o áudio de um vídeo, grava os metadados e salva sem substituir arquivos.
+    """Extrai o áudio de um vídeo, grava os metadados e entrega ao destino.
 
     Todo o trabalho acontece em uma pasta temporária, então uma falha ou um
     cancelamento nunca deixa arquivos pela metade no destino.
@@ -39,7 +63,7 @@ class ExtractAudio:
     def __call__(
         self,
         url: str,
-        dest_dir: Path,
+        destination: AudioDestination,
         audio_format: AudioFormat,
         metadata: AudioMetadata,
         on_progress: ProgressCallback,
@@ -54,10 +78,11 @@ class ExtractAudio:
                 raise ExtractionCancelled()
 
             on_progress(Progress(Stage.TAGGING))
-            self._tags.write(audio.path, self._tags_for(audio, metadata, cover))
+            tags = self._tags_for(audio, metadata, cover)
+            self._tags.write(audio.path, tags)
 
             on_progress(Progress(Stage.SAVING))
-            return self._save(audio.path, dest_dir)
+            return destination.save(audio.path, tags)
 
     @staticmethod
     def _tags_for(audio: DownloadedAudio, metadata: AudioMetadata, cover: bytes) -> AudioTags:
@@ -71,16 +96,6 @@ class ExtractAudio:
             track_no=metadata.track_no,
             source_url=audio.source_url,
         )
-
-    @staticmethod
-    def _save(source: Path, dest_dir: Path) -> Path:
-        try:
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            target = unique_path(dest_dir / source.name)
-            shutil.move(source, target)
-        except OSError as exc:
-            raise ExtractionError(f"Não foi possível salvar em {dest_dir}: {exc}") from exc
-        return target
 
 
 class ExtractBatch:
@@ -97,7 +112,7 @@ class ExtractBatch:
     def __call__(
         self,
         urls: list[str],
-        dest_dir: Path,
+        destination: AudioDestination,
         audio_format: AudioFormat,
         metadata: AudioMetadata,
         on_progress: Callable[[int, Progress], None],
@@ -113,17 +128,17 @@ class ExtractBatch:
 
         results = []
         for index, url in enumerate(urls):
-            result = self._extract_one(index, url, dest_dir, audio_format, metadata, on_progress, cancel)
+            result = self._extract_one(index, url, destination, audio_format, metadata, on_progress, cancel)
             results.append(result)
             on_result(index, result)
         return results
 
-    def _extract_one(self, index, url, dest_dir, audio_format, metadata, on_progress, cancel) -> BatchResult:
+    def _extract_one(self, index, url, destination, audio_format, metadata, on_progress, cancel) -> BatchResult:
         if cancel.is_set():
             return BatchResult(url, cancelled=True)
         try:
             path = self._extract(
-                url, dest_dir, audio_format, metadata, lambda progress: on_progress(index, progress), cancel
+                url, destination, audio_format, metadata, lambda progress: on_progress(index, progress), cancel
             )
             return BatchResult(url, path=path)
         except ExtractionCancelled:

@@ -13,6 +13,13 @@ from enum import Enum, auto
 
 from ytdown.domain.text import search_key
 
+class DuplicatePolicy(Enum):
+    """O que fazer ao extrair um vídeo que já está na biblioteca (mesma URL de origem)."""
+
+    REPLACE = auto()  # A faixa existente passa a usar o arquivo novo; o antigo vai para a Lixeira.
+    KEEP_BOTH = auto()  # Uma faixa nova, ao lado da existente.
+
+
 UNKNOWN_ARTIST = "Artista desconhecido"
 UNKNOWN_ALBUM = "Álbum desconhecido"
 UNKNOWN_GENRE = "Gênero desconhecido"

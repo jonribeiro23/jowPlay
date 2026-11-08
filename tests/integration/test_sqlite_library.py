@@ -2,6 +2,7 @@
 
 import sqlite3
 import tempfile
+import threading
 import time
 import unittest
 from dataclasses import replace
@@ -36,6 +37,30 @@ class SqliteContractTests(TempDatabase, TrackRepositoryContract, unittest.TestCa
 
 
 class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
+    def test_can_be_used_from_other_threads(self):
+        # A extração registra faixas fora da thread da interface, que continua consultando.
+        repo = self.open()
+        tracks = sample_tracks()
+        errors = []
+
+        def add_some(part):
+            try:
+                for track in part:
+                    repo.add(track)
+                    repo.list_tracks()
+            except Exception as exc:  # noqa: BLE001 - o teste mostra qualquer erro.
+                errors.append(exc)
+
+        workers = [threading.Thread(target=add_some, args=(tracks[i::3],)) for i in range(3)]
+        for worker in workers:
+            worker.start()
+        for _ in range(20):
+            repo.artists()
+        for worker in workers:
+            worker.join(10)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(repo.list_tracks(TrackQuery(include_missing=True))), len(tracks))
+
     def test_data_survives_reopening(self):
         first = self.open()
         saved = [first.add(t) for t in sample_tracks()]

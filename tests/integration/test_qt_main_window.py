@@ -74,6 +74,13 @@ class MainWindowTests(unittest.TestCase):
         self.assertTrue(self.window.play_queue.isVisible())
         self.assertTrue(toggle.isChecked())
 
+    def test_options_button_asks_for_the_options(self):
+        requested = []
+        self.window.options_requested.connect(lambda: requested.append(True))
+        self.assertTrue(self.window.options_button.isVisible())
+        self.window.options_button.click()
+        self.assertEqual(requested, [True])
+
     def test_controls_exist_but_have_no_action_yet(self):
         for control in self.window.transport.controls():
             with self.subTest(control.objectName()):

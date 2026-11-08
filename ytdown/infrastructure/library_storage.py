@@ -77,6 +77,14 @@ class FileSystemLibraryStorage:
             raise LibraryError(f"Não foi possível enviar {rel_path} para a Lixeira: {exc}") from exc
         self._remove_empty_folders(path.parent)
 
+    def discard(self, rel_path: str) -> None:
+        path = self.absolute(rel_path)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise LibraryError(f"Não foi possível apagar {rel_path} da biblioteca: {exc}") from exc
+        self._remove_empty_folders(path.parent)
+
     def relocate(self, new_root: Path, on_progress: Callable[[int, int], None]) -> dict[str, str]:
         old_root = self._root
         if os.path.normcase(new_root.resolve()) == os.path.normcase(old_root.resolve()):

@@ -10,7 +10,7 @@ from tests.qt_support import dispose, qt_app, wait_until
 from PySide6.QtCore import QCoreApplication, QEvent
 from PySide6.QtWidgets import QApplication
 
-from tests.fakes import FakeDevices
+from tests.fakes import FakeDevices, FakeLibrary
 from ytdown.application.sharing import SharingSession
 from ytdown.domain.errors import ShareError
 from ytdown.infrastructure.sharing.server import LocalShareServer
@@ -189,7 +189,7 @@ class ExtractPageSendTests(unittest.TestCase):
         def send_to_phone(_paths):
             raise ShareError("Não foi possível iniciar o compartilhamento.")
 
-        page = ExtractPage(extract_batch=None, send_to_phone=send_to_phone)
+        page = ExtractPage(None, FakeLibrary(), send_to_phone=send_to_phone)
         self.addCleanup(dispose, page)
         page.saved_files = [Path("a.mp3")]
         page.send_button.setEnabled(True)
@@ -199,7 +199,7 @@ class ExtractPageSendTests(unittest.TestCase):
 
     def test_send_button_hands_over_the_saved_files(self):
         sent = []
-        page = ExtractPage(extract_batch=None, send_to_phone=sent.append)
+        page = ExtractPage(None, FakeLibrary(), send_to_phone=sent.append)
         self.addCleanup(dispose, page)
         page.saved_files = [Path("a.mp3"), Path("b.mp3")]
         page.send_button.setEnabled(True)
