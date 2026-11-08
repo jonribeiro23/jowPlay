@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import unittest
+from contextlib import closing
 from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -90,7 +91,8 @@ class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
         self.assertEqual(upgraded.schema_version, 2)
         self.assertEqual(upgraded.get(saved.id), saved)
         upgraded.close()
-        columns = [row[1] for row in sqlite3.connect(self.db_path).execute("PRAGMA table_info(tracks)")]
+        with closing(sqlite3.connect(self.db_path)) as db:
+            columns = [row[1] for row in db.execute("PRAGMA table_info(tracks)")]
         self.assertIn("rating", columns)
 
     def test_a_failing_migration_changes_nothing(self):
@@ -107,6 +109,7 @@ class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
         self.open().close()
         with self.assertRaisesRegex(LibraryError, "versão mais nova"):
             self.open(migrations=[])
+        self.db_path.rename(self.db_path.with_name("movido.db"))  # O arquivo não ficou preso (Windows).
 
     def test_unreadable_file_gives_a_clear_error(self):
         self.db_path.parent.mkdir(parents=True)

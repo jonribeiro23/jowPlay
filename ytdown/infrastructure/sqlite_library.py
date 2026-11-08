@@ -205,6 +205,7 @@ class SqliteTrackRepository:
 
     def __init__(self, path: Path, migrations: list[tuple[int, str]] = MIGRATIONS) -> None:
         self._lock = threading.RLock()
+        self._db: sqlite3.Connection | None = None
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             self._db = sqlite3.connect(path, check_same_thread=False)
@@ -213,7 +214,11 @@ class SqliteTrackRepository:
             self._db.execute("PRAGMA journal_mode = WAL")
             self._db.execute("PRAGMA foreign_keys = ON")
             self._migrate(migrations)
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, LibraryError) as exc:
+            if self._db is not None:
+                self._db.close()  # Senão o arquivo continua preso até o fim do processo.
+            if isinstance(exc, LibraryError):
+                raise
             raise LibraryError(f"Não foi possível abrir a biblioteca em {path}: {exc}") from exc
 
     @_locked

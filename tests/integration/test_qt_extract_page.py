@@ -2,21 +2,18 @@
 
 import threading
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 from tests.qt_support import dispose, qt_app, wait_until
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtTest import QTest
-
-from datetime import datetime
-
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from tests.fakes import FakeLibrary
 from ytdown.domain.errors import InvalidCover
 from ytdown.domain.library import DuplicatePolicy, Track
-from ytdown.domain.models import AUDIO_FORMATS, BatchResult, Progress, Stage
+from ytdown.domain.models import AUDIO_FORMATS, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.presentation import texts
 from ytdown.presentation.qt.extract_page import CANCEL_LABEL, EXTRACT_LABEL, ExtractPage, ask_duplicates_dialog
 from ytdown.presentation.qt.main_window import MainWindow
@@ -32,10 +29,13 @@ class FakeBatch:
     def __init__(self, fail=(), block=(), error_before_start=None):
         self.fail, self.block, self.error_before_start = set(fail), set(block), error_before_start
         self.calls = []
+        self.numbering = []
         self.blocked = threading.Event()
 
-    def __call__(self, urls, destination, audio_format, metadata, on_progress, on_result, cancel):
+    def __call__(self, urls, destination, audio_format, metadata, on_progress, on_result, cancel,
+                 number_tracks=False):
         self.calls.append((urls, destination, audio_format, metadata))
+        self.numbering.append(number_tracks)
         if self.error_before_start:
             raise self.error_before_start
         results = []
@@ -62,16 +62,18 @@ class ExtractPageTests(unittest.TestCase):
     def setUpClass(cls):
         cls.app = qt_app()
 
-    def make_page(self, batch=None, send_to_phone=None, library=None, ask=None):
+    def make_page(self, batch=None, send_to_phone=None, library=None, ask=None, genres=None):
         self.batch = batch or FakeBatch()
         self.library = library or FakeLibrary()
         self.asked = []
+        self.genres = genres if genres is not None else []
 
         def record_and_answer(duplicates):
             self.asked.append(duplicates)
             return ask(duplicates) if ask else DuplicatePolicy.KEEP_BOTH
 
-        page = ExtractPage(self.batch, self.library, send_to_phone=send_to_phone, ask_duplicates=record_and_answer)
+        page = ExtractPage(self.batch, self.library, send_to_phone=send_to_phone, ask_duplicates=record_and_answer,
+                           genre_suggestions=lambda: list(self.genres))
         page.show()
         self.addCleanup(dispose, page)  # As limpezas rodam em ordem inversa: primeiro para a extração.
         self.addCleanup(self.stop_extraction, page)
@@ -101,6 +103,98 @@ class ExtractPageTests(unittest.TestCase):
         page = self.make_page()
         page.main_button.click()
         self.assertEqual(page.status.text(), "Cole a URL de pelo menos um vídeo do YouTube.")
+
+    # --- álbum, gênero, ano e nº da faixa (JOW-20)
+
+    def fill_details(self, page, album="Disco", genre="Rock", year="2024", track=""):
+        page.album_field.setText(album)
+        page.genre_field.setText(genre)
+        page.year_field.setText(year)
+        page.track_field.setText(track)
+
+    def test_album_genre_year_and_number_go_to_the_audio(self):
+        page = self.make_page()
+        self.fill_details(page, track="3")
+        self.run_extraction(page, URL_1)
+        metadata = self.batch.calls[0][3]
+        self.assertEqual((metadata.album, metadata.genre, metadata.year, metadata.track_no), ("Disco", "Rock", 2024, 3))
+        self.assertEqual(self.batch.numbering, [False])
+
+    def test_empty_fields_mean_no_value(self):
+        page = self.make_page()
+        self.run_extraction(page, URL_1)
+        self.assertEqual(self.batch.calls[0][3], AudioMetadata())
+
+    def test_invalid_year_is_explained_before_starting(self):
+        for year in ("24", "abcd", "0999", "-200"):
+            with self.subTest(year):
+                page = self.make_page()
+                self.fill_details(page, year=year)
+                page.urls.setPlainText(URL_1)
+                page.main_button.click()
+                self.assertEqual(page.status.text(), texts.INVALID_YEAR.text)
+                self.assertEqual(page.status.property("tone"), "error")
+                self.assertEqual(self.batch.calls, [])
+
+    def test_invalid_track_number_is_explained_before_starting(self):
+        for track in ("0", "-1", "x", "1.5"):
+            with self.subTest(track):
+                page = self.make_page()
+                self.fill_details(page, track=track)
+                page.urls.setPlainText(URL_1)
+                page.main_button.click()
+                self.assertEqual(page.status.text(), texts.INVALID_TRACK_NO.text)
+                self.assertEqual(self.batch.calls, [])
+
+    def test_numbering_option_only_exists_for_a_queue(self):
+        page = self.make_page()
+        page.urls.setPlainText(URL_1)
+        self.assertFalse(page.number_tracks_box.isVisible())
+        self.assertTrue(page.track_field.isEnabled())
+        page.urls.setPlainText(f"{URL_1}\n{URL_2}")
+        self.assertTrue(page.number_tracks_box.isVisible() and page.number_tracks_box.isEnabled())
+        self.assertFalse(page.track_field.isEnabled())  # Sem numerar, cada vídeo fica sem nº.
+        self.assertEqual(page.track_label.text(), texts.TRACK_LABEL_BATCH)
+        page.number_tracks_box.setChecked(True)
+        self.assertTrue(page.track_field.isEnabled())  # Agora é o nº da primeira faixa.
+        self.assertEqual(page.track_label.text(), texts.TRACK_LABEL_NUMBERED)
+
+    def test_queue_as_an_album_numbered_in_the_order_of_the_list(self):
+        page = self.make_page()
+        self.fill_details(page)
+        page.urls.setPlainText("\n".join((URL_1, URL_2, URL_3)))
+        page.number_tracks_box.setChecked(True)
+        self.run_extraction(page, URL_1, URL_2, URL_3)
+        self.assertEqual(self.batch.numbering, [True])
+        metadata = self.batch.calls[0][3]
+        self.assertEqual((metadata.album, metadata.genre, metadata.year, metadata.track_no), ("Disco", "Rock", 2024, None))
+
+    def test_queue_without_numbering_ignores_the_disabled_number_field(self):
+        page = self.make_page()
+        page.track_field.setText("abc")  # Digitado antes de virar fila; o campo fica desativado.
+        self.run_extraction(page, URL_1, URL_2)
+        self.assertEqual(len(self.batch.calls), 1)
+        self.assertEqual((self.batch.numbering, self.batch.calls[0][3].track_no), ([False], None))
+
+    def test_all_details_are_cleared_after_a_successful_extraction(self):
+        page = self.make_page()
+        self.fill_details(page)
+        page.urls.setPlainText(f"{URL_1}\n{URL_2}")
+        page.number_tracks_box.setChecked(True)
+        page.track_field.setText("5")
+        self.run_extraction(page, URL_1, URL_2)
+        self.assertEqual([field.text() for field in (page.album_field, page.genre_field, page.year_field,
+                                                     page.track_field)], ["", "", "", ""])
+        self.assertFalse(page.number_tracks_box.isChecked())
+
+    def test_genre_suggestions_come_from_the_library_and_follow_new_extractions(self):
+        page = self.make_page(genres=["MPB", "Rock"])
+        self.assertEqual(page.genre_completer.model().stringList(), ["MPB", "Rock"])
+        self.genres.append("Samba")
+        self.run_extraction(page, URL_1)
+        self.assertEqual(page.genre_completer.model().stringList(), ["MPB", "Rock", "Samba"])
+        page.genre_completer.setCompletionPrefix("sam")
+        self.assertEqual(page.genre_completer.currentCompletion(), "Samba")
 
     # --- biblioteca
 

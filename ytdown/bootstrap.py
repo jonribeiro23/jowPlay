@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
-from ytdown.application.library import ChangeLibraryFolder, RegisterExtractedTrack, library_folder
+from ytdown.application.library import ChangeLibraryFolder, RegisterExtractedTrack, known_genres, library_folder
 from ytdown.application.sharing import SharingSession
 from ytdown.infrastructure.covers import PillowCoverLoader
 from ytdown.infrastructure.json_settings import JsonSettings, default_settings_path
@@ -90,7 +90,8 @@ def run() -> int:
 
     def page_factory(page: PageId):
         if page is PageId.EXTRACT:
-            pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send)
+            pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
+                                      genre_suggestions=lambda: known_genres(library.tracks))
         else:
             pages[page] = PlaceholderPage(page)
         return pages[page]

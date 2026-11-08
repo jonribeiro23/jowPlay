@@ -9,12 +9,27 @@ from pathlib import Path
 
 from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository
 from ytdown.domain.errors import ExtractionError, LibraryError, UnreadableAudio
-from ytdown.domain.library import DuplicatePolicy, Track
+from ytdown.domain.library import UNKNOWN_GENRE, DuplicatePolicy, Track
 from ytdown.domain.library_paths import library_path
 from ytdown.domain.models import AudioTags
+from ytdown.domain.text import search_key
 from ytdown.domain.urls import canonical_video_url
 
 LIBRARY_FOLDER_KEY = "library_folder"
+
+
+def known_genres(tracks: TrackRepository) -> list[str]:
+    """Os gêneros que já existem na biblioteca, na ordem da navegação, para sugerir ao digitar.
+    Grafias que só mudam em maiúsculas ou acentos ("Rock" e "rock") aparecem uma vez só.
+    """
+    seen: set[str] = set()
+    names = []
+    for genre in tracks.genres():
+        key = search_key(genre.name)
+        if genre.name != UNKNOWN_GENRE and key not in seen:
+            seen.add(key)
+            names.append(genre.name)
+    return names
 
 
 def library_folder(settings: Settings, default: Path) -> Path:

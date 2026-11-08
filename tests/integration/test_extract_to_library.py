@@ -29,6 +29,7 @@ MP3 = AUDIO_FORMATS[0]
 VIDEOS = {
     "https://youtu.be/aaaaaaaaaaa": "Primeira música",
     "https://www.youtube.com/watch?v=bbbbbbbbbbb": "Segunda música",
+    "https://www.youtube.com/shorts/ccccccccccc": "Terceira música",
 }
 
 
@@ -74,19 +75,31 @@ class ExtractToLibraryTests(unittest.TestCase):
         self.trashed.append(path)
         path.unlink()
 
-    def extract(self, policy=DuplicatePolicy.KEEP_BOTH):
+    def extract(self, policy=DuplicatePolicy.KEEP_BOTH, number_tracks=False):
         return self.batch(
             list(VIDEOS), self.register.destination(policy), MP3,
             AudioMetadata(artist="Banda", album="Disco", genre="Rock", year=2024),
             on_progress=lambda index, progress: None, on_result=lambda index, result: None,
-            cancel=threading.Event(),
+            cancel=threading.Event(), number_tracks=number_tracks,
         )
 
-    def test_a_queue_of_two_videos_ends_up_in_the_database_and_in_artist_album(self):
+    def test_a_queue_numbered_as_an_album_gets_the_same_album_and_numbers_1_2_3(self):
+        results = self.extract(number_tracks=True)
+
+        tracks = sorted(self.tracks.list_tracks(), key=lambda t: t.track_no)
+        self.assertEqual([(t.title, t.album, t.track_no) for t in tracks],
+                         [(title, "Disco", n) for n, title in enumerate(VIDEOS.values(), start=1)])
+        self.assertEqual([r.path.name for r in results],
+                         [f"{n:02d} - {title}.mp3" for n, title in enumerate(VIDEOS.values(), start=1)])
+        # O nº também está no arquivo, para outros players e para o celular.
+        self.assertEqual([MutagenMetadataReader().read(r.path).track_no for r in results], [1, 2, 3])
+        self.assertEqual([(a.title, a.track_count) for a in self.tracks.albums()], [("Disco", 3)])
+
+    def test_a_queue_of_videos_ends_up_in_the_database_and_in_artist_album(self):
         results = self.extract()
 
         expected = [self.root / "Banda" / "Disco" / f"{title}.mp3" for title in VIDEOS.values()]
-        self.assertEqual([r.error for r in results], [None, None])
+        self.assertEqual([r.error for r in results], [None] * len(VIDEOS))
         self.assertEqual([r.path for r in results], expected)
         self.assertTrue(all(path.exists() for path in expected))
 
@@ -106,12 +119,12 @@ class ExtractToLibraryTests(unittest.TestCase):
     def test_extracting_again_finds_the_duplicates_and_replace_keeps_one_of_each(self):
         self.extract()
         first_ids = sorted(t.id for t in self.tracks.list_tracks())
-        self.assertEqual(len(self.register.find_duplicates(list(VIDEOS))), 2)
+        self.assertEqual(len(self.register.find_duplicates(list(VIDEOS))), len(VIDEOS))
 
         results = self.extract(DuplicatePolicy.REPLACE)
 
         self.assertEqual(sorted(t.id for t in self.tracks.list_tracks()), first_ids)
-        self.assertEqual(len(self.trashed), 2)  # Os arquivos antigos foram para a "Lixeira".
+        self.assertEqual(len(self.trashed), len(VIDEOS))  # Os arquivos antigos foram para a "Lixeira".
         self.assertEqual(sorted(p.name for p in (self.root / "Banda" / "Disco").iterdir()),
                          sorted(f"{title}.mp3" for title in VIDEOS.values()))
         self.assertTrue(all(r.path.exists() for r in results))
@@ -119,8 +132,8 @@ class ExtractToLibraryTests(unittest.TestCase):
     def test_keep_both_adds_copies_beside_the_originals(self):
         self.extract()
         self.extract(DuplicatePolicy.KEEP_BOTH)
-        self.assertEqual(len(self.tracks.list_tracks()), 4)
-        self.assertEqual(len(list((self.root / "Banda" / "Disco").iterdir())), 4)
+        self.assertEqual(len(self.tracks.list_tracks()), 2 * len(VIDEOS))
+        self.assertEqual(len(list((self.root / "Banda" / "Disco").iterdir())), 2 * len(VIDEOS))
 
 
 if __name__ == "__main__":

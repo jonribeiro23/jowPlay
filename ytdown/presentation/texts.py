@@ -15,6 +15,10 @@ CANCELLING = "Cancelando..."
 TITLE_LABEL_SINGLE = "Nome (vazio: título do vídeo)"
 TITLE_LABEL_BATCH = "Nome (com vários vídeos, cada áudio usa o título do próprio vídeo)"
 QUEUED = "Na fila"
+TRACK_LABEL_SINGLE = "Nº da faixa"
+TRACK_LABEL_NUMBERED = "Nº da primeira faixa (vazio: 1)"
+TRACK_LABEL_BATCH = "Nº da faixa (cada vídeo fica sem nº)"
+NUMBER_TRACKS_LABEL = "Numerar faixas na ordem da lista"
 MAX_FAILURES_SHOWN = 3  # Acima disso, o resumo ficaria grande demais para a janela.
 
 TRANSFER_STATUS = {
@@ -88,6 +92,8 @@ def url_problem(urls: list[str], invalid_lines: list[int]) -> Message | None:
 
 
 INVALID_DESTINATION = Message("Escolha uma pasta válida para salvar o áudio.", Tone.ERROR)
+INVALID_YEAR = Message("O ano precisa ter 4 dígitos, como 2024.", Tone.ERROR)
+INVALID_TRACK_NO = Message("O nº da faixa precisa ser um número inteiro maior que zero, como 1.", Tone.ERROR)
 
 
 def extraction_failed(reason: str) -> Message:

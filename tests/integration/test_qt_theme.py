@@ -20,7 +20,7 @@ STYLESHEET = THEME_FOLDER / theme.STYLESHEET_FILE
 ICONS = THEME_FOLDER / theme.ICONS_FOLDER
 HEX_COLOR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
-TRANSPORT_ICONS = {"play", "pause", "previous", "next", "shuffle", "repeat", "volume", "mute", "queue", "options"}
+TRANSPORT_ICONS = {"play", "pause", "previous", "next", "shuffle", "repeat", "volume", "mute", "queue", "options", "check"}
 
 
 def stylesheet_without_comments() -> str:

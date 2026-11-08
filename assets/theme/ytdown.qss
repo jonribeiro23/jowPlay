@@ -223,6 +223,37 @@ QGroupBox::title {
     color: {{text_muted}};
 }
 
+QCheckBox {
+    spacing: {{space_s}};
+}
+
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid {{border_light}};
+    border-radius: {{radius}};
+    background: {{input}};
+}
+
+QCheckBox::indicator:hover {
+    border-color: {{accent}};
+}
+
+QCheckBox::indicator:focus {
+    border-color: {{focus}};
+}
+
+QCheckBox::indicator:checked {
+    background: {{selection_top}};
+    border-color: {{accent}};
+    image: url(icons:check.svg);
+}
+
+QCheckBox::indicator:disabled {
+    background: {{surface}};
+    border-color: {{border}};
+}
+
 /* --- Botões ------------------------------------------------------------------------- */
 
 QPushButton {

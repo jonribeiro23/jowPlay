@@ -38,6 +38,17 @@ class AudioMetadata:
     track_no: int | None = None
 
 
+MIN_YEAR, MAX_YEAR = 1000, 9999  # Ano com 4 dígitos.
+
+
+def is_valid_year(year: int) -> bool:
+    return MIN_YEAR <= year <= MAX_YEAR
+
+
+def is_valid_track_no(track_no: int) -> bool:
+    return track_no >= 1
+
+
 @dataclass(frozen=True)
 class AudioFileInfo:
     """O que se sabe de um arquivo de áudio existente. Etiqueta ausente vira None."""

@@ -32,7 +32,7 @@ class FakeExtract:
 
 
 class ExtractBatchTests(unittest.TestCase):
-    def run_batch(self, outcomes, cancel=None, metadata=AudioMetadata(), covers=None):
+    def run_batch(self, outcomes, cancel=None, metadata=AudioMetadata(), covers=None, number_tracks=False):
         self.extract = FakeExtract(outcomes)
         self.progress, self.reported = [], []
         batch = ExtractBatch(self.extract, covers or FakeCovers())
@@ -44,7 +44,34 @@ class ExtractBatchTests(unittest.TestCase):
             on_progress=lambda index, progress: self.progress.append((index, progress.stage)),
             on_result=lambda index, result: self.reported.append((index, result)),
             cancel=cancel or threading.Event(),
+            number_tracks=number_tracks,
         )
+
+    # --- numeração na ordem da lista (JOW-20)
+
+    def test_numbering_follows_the_order_of_the_list(self):
+        metadata = AudioMetadata(album="Disco", genre="Rock", year=2024)
+        self.run_batch({"u1": "a.mp3", "u2": "b.mp3", "u3": "c.mp3"}, metadata=metadata, number_tracks=True)
+        self.assertEqual([(m.track_no, m.album, m.genre, m.year) for _, m in self.extract.calls],
+                         [(1, "Disco", "Rock", 2024), (2, "Disco", "Rock", 2024), (3, "Disco", "Rock", 2024)])
+
+    def test_numbering_starts_at_the_chosen_number(self):
+        self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=AudioMetadata(track_no=7), number_tracks=True)
+        self.assertEqual([m.track_no for _, m in self.extract.calls], [7, 8])
+
+    def test_a_failed_video_keeps_its_number_so_the_others_stay_in_place(self):
+        results = self.run_batch({"u1": "a.mp3", "u2": ExtractionError("indisponível"), "u3": "c.mp3"},
+                                 number_tracks=True)
+        self.assertEqual([m.track_no for _, m in self.extract.calls], [1, 2, 3])
+        self.assertEqual(results[1].error, "indisponível")
+
+    def test_numbering_does_not_change_a_single_video(self):
+        self.run_batch({"u1": "a.mp3"}, metadata=AudioMetadata(track_no=4), number_tracks=True)
+        self.assertEqual(self.extract.calls[0][1].track_no, 4)
+
+    def test_without_numbering_videos_of_a_queue_have_no_number(self):
+        self.run_batch({"u1": "a.mp3", "u2": "b.mp3"}, metadata=AudioMetadata(track_no=4))
+        self.assertEqual([m.track_no for _, m in self.extract.calls], [None, None])
 
     def test_extracts_every_url_in_order(self):
         results = self.run_batch({"u1": "a.mp3", "u2": "b.mp3"})

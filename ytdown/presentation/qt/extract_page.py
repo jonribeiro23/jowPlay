@@ -14,7 +14,9 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QKeyEvent, QShowEvent
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
+    QCompleter,
     QFileDialog,
     QGridLayout,
     QGroupBox,
@@ -35,7 +37,16 @@ from ytdown.application.extraction import ExtractBatch
 from ytdown.application.library import RegisterExtractedTrack
 from ytdown.domain.errors import ShareError
 from ytdown.domain.library import DuplicatePolicy, Track
-from ytdown.domain.models import AUDIO_FORMATS, AudioFormat, AudioMetadata, BatchResult, Progress, Stage
+from ytdown.domain.models import (
+    AUDIO_FORMATS,
+    AudioFormat,
+    AudioMetadata,
+    BatchResult,
+    Progress,
+    Stage,
+    is_valid_track_no,
+    is_valid_year,
+)
 from ytdown.domain.urls import parse_url_list
 from ytdown.presentation import texts
 from ytdown.presentation.qt import theme
@@ -97,16 +108,17 @@ class ExtractionThread(QThread):
     failed = Signal(str)  # Erro antes de começar a fila (ex.: capa inválida).
 
     def __init__(self, parent: QObject, extract_batch: ExtractBatch, urls, destination, audio_format, metadata,
-                 cancel) -> None:
+                 cancel, number_tracks: bool) -> None:
         super().__init__(parent)
-        self._job = (extract_batch, urls, destination, audio_format, metadata, cancel)
+        self._job = (extract_batch, urls, destination, audio_format, metadata, cancel, number_tracks)
 
     def run(self) -> None:
-        extract_batch, urls, destination, audio_format, metadata, cancel = self._job
+        extract_batch, urls, destination, audio_format, metadata, cancel, number_tracks = self._job
         try:
             results = extract_batch(
                 urls, destination, audio_format, metadata,
                 on_progress=self.progress.emit, on_result=self.item_done.emit, cancel=cancel,
+                number_tracks=number_tracks,
             )
         except Exception as exc:  # Sem console: todo erro precisa aparecer na página.
             self.failed.emit(str(exc))
@@ -119,6 +131,7 @@ class ExtractPage(QWidget):
 
     `send_to_phone`, quando informado, recebe os arquivos salvos na última extração.
     `ask_duplicates` decide o que fazer com vídeos que já estão na biblioteca; por padrão, pergunta.
+    `genre_suggestions` dá os gêneros sugeridos ao digitar (os que já existem na biblioteca).
     """
 
     extraction_finished = Signal()
@@ -129,12 +142,14 @@ class ExtractPage(QWidget):
         library: RegisterExtractedTrack,
         send_to_phone: Callable[[list[Path]], None] | None = None,
         ask_duplicates: AskDuplicates | None = None,
+        genre_suggestions: Callable[[], list[str]] = lambda: [],
     ) -> None:
         super().__init__()
         self.setObjectName("page-extract")
         self._extract_batch = extract_batch
         self._library = library
         self._ask_duplicates = ask_duplicates or ask_duplicates_dialog(self)
+        self._genre_suggestions = genre_suggestions
         self._send_to_phone = send_to_phone
         self._cancel = threading.Event()
         self._thread: ExtractionThread | None = None
@@ -160,6 +175,7 @@ class ExtractPage(QWidget):
         layout.addWidget(self.library_info)
         self.refresh_library_folder()
         layout.addWidget(self._details())
+        self._refresh_batch_fields()
         layout.addWidget(self._queue_list(), stretch=1)
         self.progress = QProgressBar()
         self.progress.setObjectName("extractProgress")
@@ -187,7 +203,7 @@ class ExtractPage(QWidget):
         grid.addWidget(QLabel("URLs do YouTube (uma por linha)"), 0, 0, 1, 2)
         self.urls = UrlBox()
         self.urls.setFixedHeight(self.urls.fontMetrics().lineSpacing() * 4 + 12)
-        self.urls.textChanged.connect(self._refresh_title_field)
+        self.urls.textChanged.connect(self._refresh_batch_fields)
         self.urls.submitted.connect(self.start)
         grid.addWidget(self.urls, 1, 0)
         self.paste_button = QPushButton("Colar")
@@ -201,25 +217,68 @@ class ExtractPage(QWidget):
         return grid
 
     def _details(self) -> QGroupBox:
+        """Nome, autor, álbum, gênero, ano, nº da faixa e capa; tudo opcional."""
         box = QGroupBox("Informações do áudio (opcional)")
         grid = QGridLayout(box)
-        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(0, 3)
+        grid.setColumnStretch(1, 2)
+
         self.title_label = QLabel(texts.TITLE_LABEL_SINGLE)
         grid.addWidget(self.title_label, 0, 0, 1, 2)
         self.title_field = QLineEdit()
         grid.addWidget(self.title_field, 1, 0, 1, 2)
+
         grid.addWidget(QLabel("Autor (vazio: sem autor)"), 2, 0, 1, 2)
         self.artist_field = QLineEdit()
         grid.addWidget(self.artist_field, 3, 0, 1, 2)
-        grid.addWidget(QLabel("Imagem de capa (vazio: imagem padrão)"), 4, 0, 1, 2)
+
+        grid.addWidget(QLabel("Álbum"), 4, 0)
+        grid.addWidget(QLabel("Gênero"), 4, 1)
+        self.album_field = QLineEdit()
+        grid.addWidget(self.album_field, 5, 0)
+        self.genre_field = QLineEdit()
+        self.genre_completer = QCompleter([], self.genre_field)
+        self.genre_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.genre_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.genre_field.setCompleter(self.genre_completer)
+        grid.addWidget(self.genre_field, 5, 1)
+
+        grid.addLayout(self._year_and_number(), 6, 0, 1, 2)
+
+        grid.addWidget(QLabel("Imagem de capa (vazio: imagem padrão)"), 7, 0, 1, 2)
+        cover_row = QHBoxLayout()
         self.cover_field = QLineEdit()
-        grid.addWidget(self.cover_field, 5, 0)
+        cover_row.addWidget(self.cover_field, stretch=1)
         self.cover_button = QPushButton("Procurar...")
         self.cover_button.clicked.connect(self._choose_cover)
-        grid.addWidget(self.cover_button, 5, 1)
-        for field in (self.title_field, self.artist_field, self.cover_field):
+        cover_row.addWidget(self.cover_button)
+        grid.addLayout(cover_row, 8, 0, 1, 2)
+
+        for field in (self.title_field, self.artist_field, self.album_field, self.genre_field, self.year_field,
+                      self.track_field, self.cover_field):
             field.returnPressed.connect(self.start)
         return box
+
+    def _year_and_number(self) -> QGridLayout:
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.addWidget(QLabel("Ano"), 0, 0)
+        self.track_label = QLabel(texts.TRACK_LABEL_SINGLE)
+        grid.addWidget(self.track_label, 0, 1)
+        self.year_field = QLineEdit()
+        self.year_field.setMaxLength(4)
+        self.year_field.setPlaceholderText("2024")
+        self.year_field.setFixedWidth(self.year_field.fontMetrics().horizontalAdvance("00000") + 24)
+        grid.addWidget(self.year_field, 1, 0)
+        self.track_field = QLineEdit()
+        self.track_field.setMaxLength(3)
+        self.track_field.setFixedWidth(self.year_field.width())
+        grid.addWidget(self.track_field, 1, 1)
+        self.number_tracks_box = QCheckBox(texts.NUMBER_TRACKS_LABEL)
+        self.number_tracks_box.toggled.connect(self._refresh_batch_fields)
+        grid.addWidget(self.number_tracks_box, 1, 2)
+        grid.setColumnStretch(2, 1)
+        return grid
 
     def _queue_list(self) -> QTreeWidget:
         """Situação de cada vídeo; aparece só quando há mais de um."""
@@ -255,11 +314,24 @@ class ExtractPage(QWidget):
     def _url_lines(self) -> list[str]:
         return [line for line in self.urls.toPlainText().splitlines() if line.strip()]
 
-    def _refresh_title_field(self) -> None:
-        """Com vários vídeos, um único nome para todos não faz sentido."""
-        batch = len(self._url_lines()) > 1
+    def _refresh_batch_fields(self) -> None:
+        """Com vários vídeos, um único nome ou nº para todos não faz sentido: o nome vem de cada
+        vídeo e o nº, se pedido, segue a ordem da lista (a partir do nº digitado).
+        """
+        batch = self._is_batch()
+        idle = not self.is_working()
         self.title_label.setText(texts.TITLE_LABEL_BATCH if batch else texts.TITLE_LABEL_SINGLE)
-        self.title_field.setEnabled(not batch and not self.is_working())
+        self.title_field.setEnabled(not batch and idle)
+        self.number_tracks_box.setVisible(batch)  # Com um vídeo só, numerar não faz sentido.
+        self.number_tracks_box.setEnabled(idle)
+        if not batch:
+            self.track_label.setText(texts.TRACK_LABEL_SINGLE)
+        else:
+            self.track_label.setText(texts.TRACK_LABEL_NUMBERED if self._numbering() else texts.TRACK_LABEL_BATCH)
+        self.track_field.setEnabled(self._track_number_applies() and idle)
+
+    def refresh_genre_suggestions(self) -> None:
+        self.genre_completer.model().setStringList(self._genre_suggestions())
 
     def _paste_urls(self) -> None:
         pasted = QGuiApplication.clipboard().text().strip()
@@ -284,6 +356,7 @@ class ExtractPage(QWidget):
 
     def showEvent(self, event: QShowEvent) -> None:
         self.refresh_library_folder()
+        self.refresh_genre_suggestions()
         super().showEvent(event)
 
     def _choose_cover(self) -> None:
@@ -291,12 +364,38 @@ class ExtractPage(QWidget):
         if image:
             self.cover_field.setText(str(Path(image)))
 
-    def _metadata(self) -> AudioMetadata:
+    def _numbers(self) -> tuple[int | None, int | None] | texts.Message:
+        """Ano e nº da faixa digitados, ou a mensagem explicando o que está errado."""
+        year_text, track_text = self.year_field.text().strip(), self.track_field.text().strip()
+        year = int(year_text) if year_text.isdigit() else None
+        if year_text and (year is None or not is_valid_year(year)):
+            return texts.INVALID_YEAR
+        if not self._track_number_applies():
+            return year, None  # Fila sem numeração: o campo está desativado e não vale.
+        track_no = int(track_text) if track_text.isdigit() else None
+        if track_text and (track_no is None or not is_valid_track_no(track_no)):
+            return texts.INVALID_TRACK_NO
+        return year, track_no
+
+    def _is_batch(self) -> bool:
+        return len(self._url_lines()) > 1
+
+    def _numbering(self) -> bool:
+        return self._is_batch() and self.number_tracks_box.isChecked()
+
+    def _track_number_applies(self) -> bool:
+        return not self._is_batch() or self._numbering()
+
+    def _metadata(self, year: int | None, track_no: int | None) -> AudioMetadata:
         cover = self.cover_field.text().strip().strip('"')  # "Copiar como caminho" inclui aspas.
         return AudioMetadata(
             title=self.title_field.text().strip(),
             artist=self.artist_field.text().strip(),
             cover=Path(cover) if cover else None,
+            album=self.album_field.text().strip(),
+            genre=self.genre_field.text().strip(),
+            year=year,
+            track_no=track_no,
         )
 
     def _selected_format(self) -> AudioFormat:
@@ -312,10 +411,14 @@ class ExtractPage(QWidget):
             return
         urls, invalid_lines = parse_url_list(self.urls.toPlainText())
         problem = texts.url_problem(urls, invalid_lines)
+        numbers = self._numbers()
+        if problem is None and isinstance(numbers, texts.Message):
+            problem = numbers
         if problem:
             self._finish_progress(0)
             self._show(problem)
             return
+        year, track_no = numbers
 
         # Pergunta uma vez, antes de baixar, o que fazer com vídeos que já estão na biblioteca.
         policy = DuplicatePolicy.KEEP_BOTH
@@ -336,7 +439,8 @@ class ExtractPage(QWidget):
         self._set_working(True)
         starting = Progress(Stage.STARTING)
         self._set_progress(starting, texts.progress_text(starting, self._running_format))
-        self._run_in_background(urls, self._library.destination(policy), self._running_format, self._metadata())
+        self._run_in_background(urls, self._library.destination(policy), self._running_format,
+                                self._metadata(year, track_no), self._numbering())
 
     def cancel(self) -> None:
         if self.is_working():
@@ -373,9 +477,9 @@ class ExtractPage(QWidget):
 
     # --- trabalho em segundo plano
 
-    def _run_in_background(self, urls, destination, audio_format, metadata) -> None:
+    def _run_in_background(self, urls, destination, audio_format, metadata, number_tracks) -> None:
         self._thread = ExtractionThread(self, self._extract_batch, urls, destination, audio_format, metadata,
-                                        self._cancel)
+                                        self._cancel, number_tracks)
         self._thread.progress.connect(self._on_progress)
         self._thread.item_done.connect(self._on_item_done)
         self._thread.succeeded.connect(self._on_finished)
@@ -420,8 +524,10 @@ class ExtractPage(QWidget):
         self.saved_files = [result.path for result in results if result.path]
         if self.saved_files:
             # Essas informações são destes vídeos; não podem ir para os próximos sem querer.
-            for field in (self.title_field, self.artist_field, self.cover_field):
+            for field in self._detail_fields():
                 field.clear()
+            self.number_tracks_box.setChecked(False)
+        self.refresh_genre_suggestions()  # Um gênero novo já aparece como sugestão.
         self.show_file_button.setEnabled(bool(self.saved_files))
         self.send_button.setEnabled(bool(self.saved_files))
         self._finish_progress(texts.processed_percent(results))
@@ -461,14 +567,19 @@ class ExtractPage(QWidget):
         self.status.setText(message.text)
         theme.set_tone(self.status, message.tone.name.lower())  # A cor vem do tema.
 
+    def _detail_fields(self) -> list[QLineEdit]:
+        return [self.title_field, self.artist_field, self.album_field, self.genre_field, self.year_field,
+                self.track_field, self.cover_field]
+
     def _set_working(self, working: bool) -> None:
         self._working = working
-        for widget in (self.urls, self.paste_button, self.format_box, self.artist_field, self.cover_field,
-                       self.cover_button):
+        # Nome, nº da faixa e a opção de numerar dependem da fila: _refresh_batch_fields cuida deles.
+        for widget in (self.urls, self.paste_button, self.format_box, self.artist_field, self.album_field,
+                       self.genre_field, self.year_field, self.cover_field, self.cover_button):
             widget.setEnabled(not working)
         self.main_button.setText(CANCEL_LABEL if working else EXTRACT_LABEL)
         self.main_button.setEnabled(True)
         if working:
             self.show_file_button.setEnabled(False)
             self.send_button.setEnabled(False)
-        self._refresh_title_field()
+        self._refresh_batch_fields()

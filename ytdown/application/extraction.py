@@ -98,6 +98,20 @@ class ExtractAudio:
         )
 
 
+def video_metadata(metadata: AudioMetadata, index: int, total: int, number_tracks: bool = False) -> AudioMetadata:
+    """Os dados de um vídeo da fila.
+
+    Com um vídeo só, valem os dados escolhidos. Com vários, um mesmo nome ou nº de faixa
+    para todos não faz sentido: cada um usa o título do próprio vídeo e, com `number_tracks`,
+    o nº segue a ordem da lista, a partir do nº escolhido (ou de 1). Artista, álbum, gênero,
+    ano e capa valem para todos.
+    """
+    if total == 1:
+        return metadata
+    track_no = (metadata.track_no or 1) + index if number_tracks else None
+    return replace(metadata, title="", track_no=track_no)
+
+
 class ExtractBatch:
     """Extrai vários vídeos, um de cada vez.
 
@@ -118,17 +132,16 @@ class ExtractBatch:
         on_progress: Callable[[int, Progress], None],
         on_result: Callable[[int, BatchResult], None],
         cancel: threading.Event,
+        number_tracks: bool = False,
     ) -> list[BatchResult]:
+        """`number_tracks`: numera as faixas na ordem da lista (ver `video_metadata`)."""
         # Uma capa inválida faria todos os vídeos falharem; melhor avisar uma vez só.
         self._covers.load(metadata.cover)
-        if len(urls) > 1:
-            # Um mesmo nome ou nº de faixa para vários áudios não faz sentido: cada um usa o
-            # título do próprio vídeo. Artista, álbum, gênero, ano e capa valem para todos.
-            metadata = replace(metadata, title="", track_no=None)
 
         results = []
         for index, url in enumerate(urls):
-            result = self._extract_one(index, url, destination, audio_format, metadata, on_progress, cancel)
+            own = video_metadata(metadata, index, len(urls), number_tracks)
+            result = self._extract_one(index, url, destination, audio_format, own, on_progress, cancel)
             results.append(result)
             on_result(index, result)
         return results

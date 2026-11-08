@@ -83,6 +83,8 @@ A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `deve
 
 Na interface Qt, todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`, com o índice em `%APPDATA%\ytDown\library.db`. A pasta pode ser trocada em **Opções** (embaixo da árvore); os áudios vão junto. Ao extrair de novo um vídeo que já está na biblioteca, o app pergunta se deve substituir, manter os dois ou cancelar.
 
+A página "Extrair" também aceita **álbum, gênero (com sugestões dos gêneros já existentes), ano e nº da faixa**. Numa fila, álbum, gênero e ano valem para todos os vídeos; com **Numerar faixas na ordem da lista**, cada vídeo recebe o nº da sua posição (a partir do nº digitado, ou de 1). Assim, uma fila extraída como álbum chega à biblioteca já em ordem.
+
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)
 .\.venv\Scripts\python.exe main.py --legacy                         # interface Tkinter da 1.x
