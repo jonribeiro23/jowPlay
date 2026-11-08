@@ -37,21 +37,25 @@ def run() -> int:
     from ytdown.presentation.qt.extract_page import ExtractPage
     from ytdown.presentation.qt.main_window import MainWindow
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
+    from ytdown.presentation.qt.send_dialog import PhoneSharing
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = QApplication(sys.argv)
     app.setApplicationName("ytDown")
     app.setWindowIcon(QIcon(str(asset("icon.ico"))))
     extract_batch = build_extract_batch()
+    sharing = PhoneSharing(create_share_server)
 
     def page_factory(page: PageId):
         if page is PageId.EXTRACT:
-            return ExtractPage(extract_batch)  # O envio para o celular entra na JOW-17.
+            return ExtractPage(extract_batch, send_to_phone=sharing.send)
         return PlaceholderPage(page)
 
     window = MainWindow(page_factory)
+    sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
     window.show()
     exit_code = app.exec()
+    sharing.stop()  # O app pode sair com a janela de envio aberta; o servidor não pode continuar.
     # Apaga a janela enquanto a QApplication ainda existe; deixar para o fim do processo
     # faz o Python destruí-las em ordem qualquer, e o app pode cair ao fechar.
     del window
@@ -59,7 +63,7 @@ def run() -> int:
 
 
 def run_legacy() -> None:
-    """Interface Tkinter da versão 1.x, mantida até a extração e o envio irem para o Qt (JOW-16 a JOW-21)."""
+    """Interface Tkinter da versão 1.x, mantida até a JOW-21."""
     import tkinter as tk
 
     from ytdown.presentation.main_window import MainWindow

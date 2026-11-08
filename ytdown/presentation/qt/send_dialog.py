@@ -1,0 +1,174 @@
+"""Janela "Enviar para o celular" em Qt. O servidor funciona apenas enquanto ela está aberta."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtWidgets import (
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ytdown.application.ports import ShareServer
+from ytdown.presentation import texts
+
+# Recebe a função a chamar quando algo muda (em outra thread) e devolve o servidor.
+ShareServerFactory = Callable[[Callable[[], None]], ShareServer]
+
+TITLE = "Enviar para o celular"
+STEPS = (
+    "1. Conecte o celular ao Wi-Fi da mesma rede deste PC.\n"
+    "2. Abra o app ytDown no celular e escolha este PC.\n"
+    "3. Na primeira vez, digite o código abaixo no celular.\n"
+    "4. Toque em Baixar no áudio que aparecer na lista."
+)
+FIREWALL_HINT = "Se o Windows perguntar, permita o acesso em redes privadas."
+STOP_LABEL = "Parar de compartilhar"
+
+
+class SendDialog(QDialog):
+    """Janela não modal: dá para continuar extraindo com ela aberta.
+
+    O servidor avisa as mudanças em threads próprias; o aviso vira um sinal Qt, que o
+    Qt entrega na thread da interface antes de a lista ser atualizada.
+    """
+
+    sharing_stopped = Signal()
+    _changed = Signal()
+
+    def __init__(self, create_server: ShareServerFactory, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("sendDialog")
+        self.setWindowTitle(TITLE)
+        self.setModal(False)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._stopped = False
+        self._changed.connect(self._refresh)
+        self.server = create_server(self._notify_change)
+        try:
+            self.server.start()
+        except Exception:
+            # Sem servidor a janela ficaria vazia e sem utilidade; ela nem chega a aparecer.
+            self._stopped = True
+            self.deleteLater()
+            raise  # Quem abre a janela mostra a mensagem de erro.
+        self._build()
+        self.address.setText(texts.share_address(self.server.address()))
+        self._refresh()
+
+    def _build(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.addWidget(QLabel(STEPS))
+
+        code_title = QLabel("Código de pareamento")
+        code_title.setContentsMargins(0, 8, 0, 0)
+        layout.addWidget(code_title)
+        self.code = QLabel()
+        self.code.setObjectName("pairingCode")
+        self.code.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        font = self.code.font()
+        font.setPointSizeF(font.pointSizeF() * 2.4)
+        font.setBold(True)
+        self.code.setFont(font)
+        layout.addWidget(self.code)
+
+        self.address = QLabel()
+        self.address.setObjectName("shareAddress")
+        self.address.setWordWrap(True)
+        self.address.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(self.address)
+
+        layout.addSpacing(8)
+        layout.addWidget(QLabel("Áudios disponíveis para o celular"))
+        self.files = QTreeWidget()
+        self.files.setObjectName("sharedFiles")
+        self.files.setHeaderLabels(["Arquivo", "Situação"])
+        self.files.setRootIsDecorated(False)
+        self.files.setColumnWidth(0, 320)
+        self.files.setMinimumSize(540, 140)
+        layout.addWidget(self.files, stretch=1)
+
+        layout.addWidget(QLabel(FIREWALL_HINT))
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        self.stop_button = QPushButton(STOP_LABEL)
+        self.stop_button.setObjectName("stopSharing")
+        self.stop_button.setAutoDefault(False)
+        self.stop_button.clicked.connect(self.stop_sharing)
+        buttons.addWidget(self.stop_button)
+        layout.addLayout(buttons)
+
+    def add(self, path: Path) -> None:
+        self.server.share(path)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def rows(self) -> list[tuple[str, str]]:
+        return [(self.files.topLevelItem(i).text(0), self.files.topLevelItem(i).text(1))
+                for i in range(self.files.topLevelItemCount())]
+
+    def _notify_change(self) -> None:
+        """Chamado pelo servidor, possivelmente em outra thread."""
+        if self._stopped:
+            return  # Uma conexão terminando depois do fim não tem mais onde aparecer.
+        try:
+            self._changed.emit()
+        except RuntimeError:
+            pass  # A janela já foi apagada pelo Qt.
+
+    @Slot()
+    def _refresh(self) -> None:
+        if self._stopped:
+            return
+        self.code.setText(texts.pairing_code(self.server.pairing_code))
+        self.files.clear()
+        for name, status in self.server.statuses():
+            QTreeWidgetItem(self.files, [name, texts.TRANSFER_STATUS[status]])
+
+    def stop_sharing(self) -> None:
+        """Para o servidor (inclusive as conexões abertas) e fecha a janela."""
+        if self._stopped:
+            return
+        self._stopped = True
+        self.server.stop()
+        self.sharing_stopped.emit()
+        self.done(QDialog.DialogCode.Rejected)
+
+    def reject(self) -> None:  # Esc e o X da janela também param o compartilhamento.
+        self.stop_sharing()
+
+
+class PhoneSharing:
+    """Mantém no máximo uma janela de envio: os áudios novos entram na lista da janela aberta."""
+
+    def __init__(self, create_server: ShareServerFactory, parent: QWidget | None = None) -> None:
+        self._create_server = create_server
+        self.parent = parent
+        self.dialog: SendDialog | None = None
+
+    def send(self, paths: list[Path]) -> None:
+        """Pode lançar ShareError se o compartilhamento não iniciar (ex.: porta ocupada)."""
+        if not paths:
+            return
+        if self.dialog is None:
+            self.dialog = SendDialog(self._create_server, self.parent)
+            self.dialog.sharing_stopped.connect(self._on_stopped)
+        for path in paths:
+            self.dialog.add(path)
+
+    def stop(self) -> None:
+        if self.dialog is not None:
+            self.dialog.stop_sharing()
+
+    def _on_stopped(self) -> None:
+        self.dialog = None

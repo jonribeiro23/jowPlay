@@ -79,7 +79,7 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
-A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração já está na página "Extrair" da interface Qt. Enquanto o envio para o celular não migra (JOW-17), `main.py --legacy` abre a interface Tkinter da versão 1.x.
+A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A extração e o envio para o celular já estão na página "Extrair" da interface Qt. Até a JOW-21, `main.py --legacy` ainda abre a interface Tkinter da versão 1.x.
 
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)
@@ -106,7 +106,7 @@ ytdown/
     tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
     sharing/               servidor HTTP/UDP para o celular e celulares pareados
   presentation/            todos os textos mostrados ao usuário e as janelas
-    qt/                    interface 2.0 em Qt (PySide6): janela principal, navegação, controles
+    qt/                    interface 2.0 em Qt (PySide6): janela principal, páginas, envio para o celular
     main_window.py, ...    interface Tkinter da 1.x (sai na JOW-21)
   bootstrap.py             escolhe as implementações e conecta as camadas
 tests/

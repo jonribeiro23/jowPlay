@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from ytdown.application.extraction import ExtractBatch
+from ytdown.domain.errors import ShareError
 from ytdown.domain.models import AUDIO_FORMATS, AudioFormat, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.domain.urls import parse_url_list
 from ytdown.presentation import texts
@@ -215,7 +216,7 @@ class ExtractPage(QWidget):
         self.send_button = QPushButton("Enviar para o celular")
         self.send_button.setEnabled(False)
         self.send_button.setVisible(self._send_to_phone is not None)
-        self.send_button.clicked.connect(lambda: self._send_to_phone(list(self.saved_files)))
+        self.send_button.clicked.connect(self._send_saved_files)
         row.addWidget(self.send_button)
         self.main_button = QPushButton(EXTRACT_LABEL)
         self.main_button.setObjectName("extractButton")
@@ -319,6 +320,12 @@ class ExtractPage(QWidget):
         existing = [path for path in self.saved_files if path.exists()]
         if existing:
             subprocess.Popen(f'explorer /select,"{existing[-1]}"')
+
+    def _send_saved_files(self) -> None:
+        try:
+            self._send_to_phone(list(self.saved_files))
+        except ShareError as exc:  # Ex.: a porta já está em uso por outro ytDown aberto.
+            self._show(texts.Message(str(exc), texts.Tone.ERROR))
 
     # --- trabalho em segundo plano
 
