@@ -14,7 +14,7 @@ FORBIDDEN = {
     "presentation": ("ytdown.infrastructure", "ytdown.bootstrap"),
 }
 # As camadas de dentro também não dependem de bibliotecas de terceiros, de interface ou de rede.
-OUTSIDE_LIBRARIES = ("yt_dlp", "mutagen", "PIL", "tkinter", "http", "socket", "socketserver")
+OUTSIDE_LIBRARIES = ("yt_dlp", "mutagen", "PIL", "tkinter", "PySide6", "http", "socket", "socketserver", "sqlite3")
 
 
 def imported_modules(path: Path) -> set[str]:

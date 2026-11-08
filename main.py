@@ -1,6 +1,15 @@
-"""Inicia o ytDown. Uso: python main.py (é também o ponto de entrada do PyInstaller)."""
+"""Inicia o ytDown. Uso: python main.py (é também o ponto de entrada do PyInstaller).
 
-from ytdown.bootstrap import run
+Enquanto a migração para Qt não termina, `python main.py --legacy` abre a interface
+Tkinter da versão 1.x, que ainda tem a extração e o envio para o celular.
+"""
+
+import sys
+
+from ytdown.bootstrap import run, run_legacy
 
 if __name__ == "__main__":
-    run()
+    if "--legacy" in sys.argv[1:]:
+        run_legacy()
+    else:
+        sys.exit(run())

@@ -79,8 +79,11 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
+A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. Enquanto a extração e o envio para o celular não migram para o Qt, `main.py --legacy` abre a interface Tkinter da versão 1.x.
+
 ```powershell
-.\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
+.\.venv\Scripts\python.exe main.py                                  # executa sem empacotar (interface Qt)
+.\.venv\Scripts\python.exe main.py --legacy                         # interface Tkinter da 1.x
 .\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (não usam a rede)
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\ytDown
 powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
@@ -102,7 +105,9 @@ ytdown/
     youtube.py             download e conversão (yt-dlp + ffmpeg)
     tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
     sharing/               servidor HTTP/UDP para o celular e celulares pareados
-  presentation/            janelas Tkinter e todos os textos mostrados ao usuário
+  presentation/            todos os textos mostrados ao usuário e as janelas
+    qt/                    interface 2.0 em Qt (PySide6): janela principal, navegação, controles
+    main_window.py, ...    interface Tkinter da 1.x (sai na JOW-21)
   bootstrap.py             escolhe as implementações e conecta as camadas
 tests/
   unit/                    regras e casos de uso, com dublês das interfaces (tests/fakes.py)

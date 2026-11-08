@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ctypes
-import tkinter as tk
+import sys
 from collections.abc import Callable
 
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
@@ -14,7 +14,8 @@ from ytdown.infrastructure.sharing.device_store import JsonDeviceStore, default_
 from ytdown.infrastructure.sharing.server import LocalShareServer
 from ytdown.infrastructure.tags import MutagenTagWriter
 from ytdown.infrastructure.youtube import YtDlpDownloader
-from ytdown.presentation.main_window import MainWindow
+
+APP_ID = "ytDown.Player"  # Agrupa as janelas do app na barra de tarefas, com o ícone certo.
 
 
 def build_extract_batch() -> ExtractBatch:
@@ -28,7 +29,28 @@ def create_share_server(on_change: Callable[[], None]) -> LocalShareServer:
     return LocalShareServer(session)
 
 
-def run() -> None:
+def run() -> int:
+    """Abre a nova interface em Qt (ytDown 2.0, em construção)."""
+    from PySide6.QtGui import QIcon
+    from PySide6.QtWidgets import QApplication
+
+    from ytdown.presentation.qt.main_window import MainWindow
+
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
+    app = QApplication(sys.argv)
+    app.setApplicationName("ytDown")
+    app.setWindowIcon(QIcon(str(asset("icon.ico"))))
+    window = MainWindow()
+    window.show()
+    return app.exec()
+
+
+def run_legacy() -> None:
+    """Interface Tkinter da versão 1.x, mantida até a extração e o envio irem para o Qt (JOW-16 a JOW-21)."""
+    import tkinter as tk
+
+    from ytdown.presentation.main_window import MainWindow
+
     ctypes.windll.shcore.SetProcessDpiAwareness(1)  # Evita texto borrado em telas com escala.
     root = tk.Tk()
     root.iconbitmap(default=str(asset("icon.ico")))  # Vale também para as outras janelas.
