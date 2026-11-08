@@ -1,0 +1,121 @@
+"""Casos de uso de extração: um vídeo ou uma fila de vídeos."""
+
+from __future__ import annotations
+
+import shutil
+import tempfile
+import threading
+from collections.abc import Callable
+from dataclasses import replace
+from pathlib import Path
+
+from ytdown.application.ports import AudioDownloader, CoverLoader, ProgressCallback, TagWriter
+from ytdown.domain.errors import ExtractionCancelled, ExtractionError
+from ytdown.domain.models import AudioFormat, AudioMetadata, BatchResult, Progress, Stage
+
+
+def unique_path(path: Path) -> Path:
+    """Devolve `path` ou, se já existir, `nome (1).ext`, `nome (2).ext`..."""
+    candidate = path
+    counter = 1
+    while candidate.exists():
+        candidate = path.with_name(f"{path.stem} ({counter}){path.suffix}")
+        counter += 1
+    return candidate
+
+
+class ExtractAudio:
+    """Extrai o áudio de um vídeo, grava os metadados e salva sem substituir arquivos.
+
+    Todo o trabalho acontece em uma pasta temporária, então uma falha ou um
+    cancelamento nunca deixa arquivos pela metade no destino.
+    """
+
+    def __init__(self, downloader: AudioDownloader, covers: CoverLoader, tags: TagWriter) -> None:
+        self._downloader = downloader
+        self._covers = covers
+        self._tags = tags
+
+    def __call__(
+        self,
+        url: str,
+        dest_dir: Path,
+        audio_format: AudioFormat,
+        metadata: AudioMetadata,
+        on_progress: ProgressCallback,
+        cancel: threading.Event,
+    ) -> Path:
+        # Lê a capa antes de baixar: uma imagem inválida deve falhar logo no início.
+        cover = self._covers.load(metadata.cover)
+
+        with tempfile.TemporaryDirectory(prefix="ytdown-", ignore_cleanup_errors=True) as temp:
+            audio = self._downloader.download(url, Path(temp), audio_format, on_progress, cancel)
+            if cancel.is_set():
+                raise ExtractionCancelled()
+
+            on_progress(Progress(Stage.TAGGING))
+            title = metadata.title or audio.title or audio.path.stem
+            self._tags.write(audio.path, title, metadata.author, cover)
+
+            on_progress(Progress(Stage.SAVING))
+            return self._save(audio.path, dest_dir)
+
+    @staticmethod
+    def _save(source: Path, dest_dir: Path) -> Path:
+        try:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            target = unique_path(dest_dir / source.name)
+            shutil.move(source, target)
+        except OSError as exc:
+            raise ExtractionError(f"Não foi possível salvar em {dest_dir}: {exc}") from exc
+        return target
+
+
+class ExtractBatch:
+    """Extrai vários vídeos, um de cada vez.
+
+    Uma falha não interrompe os próximos; o cancelamento interrompe o vídeo atual
+    e marca os restantes como cancelados.
+    """
+
+    def __init__(self, extract: ExtractAudio, covers: CoverLoader) -> None:
+        self._extract = extract
+        self._covers = covers
+
+    def __call__(
+        self,
+        urls: list[str],
+        dest_dir: Path,
+        audio_format: AudioFormat,
+        metadata: AudioMetadata,
+        on_progress: Callable[[int, Progress], None],
+        on_result: Callable[[int, BatchResult], None],
+        cancel: threading.Event,
+    ) -> list[BatchResult]:
+        # Uma capa inválida faria todos os vídeos falharem; melhor avisar uma vez só.
+        self._covers.load(metadata.cover)
+        if len(urls) > 1:
+            # Um mesmo nome para vários áudios não faz sentido: cada um usa o título do vídeo.
+            metadata = replace(metadata, title="")
+
+        results = []
+        for index, url in enumerate(urls):
+            result = self._extract_one(index, url, dest_dir, audio_format, metadata, on_progress, cancel)
+            results.append(result)
+            on_result(index, result)
+        return results
+
+    def _extract_one(self, index, url, dest_dir, audio_format, metadata, on_progress, cancel) -> BatchResult:
+        if cancel.is_set():
+            return BatchResult(url, cancelled=True)
+        try:
+            path = self._extract(
+                url, dest_dir, audio_format, metadata, lambda progress: on_progress(index, progress), cancel
+            )
+            return BatchResult(url, path=path)
+        except ExtractionCancelled:
+            return BatchResult(url, cancelled=True)
+        except ExtractionError as exc:
+            return BatchResult(url, error=str(exc))
+        except Exception as exc:  # Um erro inesperado em um vídeo não deve parar a fila.
+            return BatchResult(url, error=f"Erro inesperado: {exc}")

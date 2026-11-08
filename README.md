@@ -29,7 +29,7 @@ Estas informações são gravadas no arquivo de áudio para aparecerem nos playe
 | --- | --- |
 | Nome | Título do vídeo |
 | Autor | Fica sem autor |
-| Imagem de capa | Imagem padrão (`default_cover.jpg`) |
+| Imagem de capa | Imagem padrão (`assets\default_cover.jpg`) |
 
 A capa pode ser JPG, PNG, WebP, BMP ou GIF. Ela é salva em JPEG, com no máximo 1000 pixels no lado maior, e a proporção é mantida. Áreas transparentes ficam brancas.
 
@@ -37,7 +37,7 @@ Depois de cada extração concluída, esses três campos são limpos para que os
 
 Os metadados não mudam o nome do arquivo, que continua sendo o título do vídeo. O formato WAV não tem um padrão oficial para capa e autor: o app grava esses dados, mas nem todo player os exibe. Para garantir a exibição, prefira MP3, M4A ou FLAC.
 
-Para trocar a capa padrão, substitua `default_cover.jpg` e gere o aplicativo de novo.
+Para trocar a capa padrão, substitua `assets\default_cover.jpg` e gere o aplicativo de novo.
 
 ### Enviar para o celular
 
@@ -70,7 +70,7 @@ Como o executável não tem assinatura digital, o Windows SmartScreen pode exibi
 O YouTube muda com frequência, e isso pode quebrar o `yt-dlp`. Se os downloads começarem a falhar, gere o aplicativo de novo; o script instala a versão mais recente:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 ```
 
 O script precisa de Python 3 e do ffmpeg instalados (`winget install Gyan.FFmpeg`).
@@ -80,17 +80,46 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 ## Desenvolvimento
 
 ```powershell
-.\.venv\Scripts\python.exe app.py          # executa sem empacotar
-.\.venv\Scripts\python.exe -m unittest     # testes (não usam a rede)
+.\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
+.\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (não usam a rede)
+powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\ytDown
+powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
 ```
 
-- `core.py`: download e conversão, com `yt-dlp` e `ffmpeg`.
-- `tags.py`: nome, autor e capa do arquivo de áudio, com `mutagen` e Pillow.
-- `app.py` e `send_dialog.py`: interface gráfica, com Tkinter.
-- `share.py`: servidor da rede local que entrega os áudios ao celular.
-- `build.ps1`: gera o executável, com PyInstaller.
-- `android/`: app para Android, em Kotlin com Jetpack Compose.
-- `build_android.ps1`: gera `dist\ytDown-celular.apk`. Precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`.
+O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`.
+
+### Arquitetura
+
+O código segue a Clean Architecture: está dividido em camadas, e cada camada só depende das que estão mais para dentro. As regras de negócio não conhecem yt-dlp, mutagen, Tkinter nem a rede, e por isso podem ser testadas sem eles. O teste `tests/unit/test_architecture.py` falha se alguma camada importar o que não deve.
+
+```
+main.py                    ponto de entrada (também usado pelo PyInstaller)
+ytdown/
+  domain/                  conceitos e regras puras: formatos, metadados, URLs, erros
+  application/             casos de uso (ExtractAudio, ExtractBatch, SharingSession)
+    ports.py               interfaces de que os casos de uso precisam
+  infrastructure/          implementações dessas interfaces
+    youtube.py             download e conversão (yt-dlp + ffmpeg)
+    tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
+    sharing/               servidor HTTP/UDP para o celular e celulares pareados
+  presentation/            janelas Tkinter e todos os textos mostrados ao usuário
+  bootstrap.py             escolhe as implementações e conecta as camadas
+tests/
+  unit/                    regras e casos de uso, com dublês das interfaces (tests/fakes.py)
+  integration/             implementações reais: arquivos de áudio, sockets, janela Tk
+assets/                    ícone e capa padrão
+scripts/                   scripts de build
+android/                   app para Android
+```
+
+O app para Android segue a mesma ideia, em `android/app/src/main/java/com/ytdown/receiver/`:
+
+- `domain/`: modelos, regras dos nomes de arquivo, interfaces (`Ports.kt`) e o caso de uso `DownloadAudio`.
+- `data/`: descoberta por UDP, cliente HTTP, gravação em Música/ytDown e tokens de pareamento.
+- `ui/`: ViewModel, uma tela por arquivo e o tema.
+- `AppContainer.kt`: escolhe as implementações e as entrega ao ViewModel.
+
+Para adicionar uma funcionalidade, comece pelo caso de uso em `application` (ou em `domain/usecase` no Android). Se ele precisar de algo externo, declare uma interface em `ports`, implemente em `infrastructure` (ou `data`) e conecte em `bootstrap.py` (ou `AppContainer.kt`).
 
 O APK é assinado com a chave de depuração deste computador. Isso basta para uso pessoal, mas não serve para publicar em lojas de aplicativos, e um APK gerado em outro computador não instala por cima deste sem desinstalar antes.
 
@@ -108,13 +137,13 @@ O HTTP usa a porta 47821. O código muda após cada pareamento e após 5 tentati
 
 O app pronto não fica no repositório (o `ffmpeg.exe` tem mais de 100 MB). Ele é publicado como anexo de um Release do GitHub:
 
-1. Feche o ytDown e gere o app: `build.ps1` e, se o app do celular mudou, `build_android.ps1`.
+1. Feche o ytDown e gere o app: `scripts\build_windows.ps1` e, se o app do celular mudou, `scripts\build_android.ps1`.
 2. Compacte: `Compress-Archive dist\ytDown dist\ytDown-windows.zip -Force`.
 3. Publique: `gh release create vX.Y dist\ytDown-windows.zip dist\ytDown-celular.apk --title "ytDown X.Y"`.
 
 ## Licenças de terceiros
 
-O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `build.ps1` copia para `dist\ytDown\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
+O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `scripts\build_windows.ps1` copia para `dist\ytDown\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
 
 Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mutagen](https://github.com/quodlibet/mutagen) (GPLv2+), [Pillow](https://python-pillow.org) (licença MIT-CMU) e Python (licença PSF).
 
