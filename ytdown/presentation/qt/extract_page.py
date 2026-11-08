@@ -35,8 +35,8 @@ from ytdown.domain.errors import ShareError
 from ytdown.domain.models import AUDIO_FORMATS, AudioFormat, AudioMetadata, BatchResult, Progress, Stage
 from ytdown.domain.urls import parse_url_list
 from ytdown.presentation import texts
+from ytdown.presentation.qt import theme
 
-TONE_COLORS = {texts.Tone.NEUTRAL: "", texts.Tone.SUCCESS: "#1b7f3b", texts.Tone.ERROR: "#b00020"}
 COVER_FILTER = "Imagens (*.jpg *.jpeg *.png *.webp *.bmp *.gif);;Todos os arquivos (*.*)"
 EXTRACT_LABEL = "Extrair áudio"
 CANCEL_LABEL = "Cancelar"
@@ -120,7 +120,7 @@ class ExtractPage(QWidget):
 
     def _build(self, destination: str) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(*[theme.PAGE_MARGIN] * 4)
         layout.addWidget(self._title())
         layout.addLayout(self._source_and_output(destination))
         layout.addWidget(self._details())
@@ -142,10 +142,7 @@ class ExtractPage(QWidget):
     @staticmethod
     def _title() -> QLabel:
         title = QLabel("Extrair")
-        title.setObjectName("pageTitle")
-        font = title.font()
-        font.setPointSizeF(font.pointSizeF() * 1.6)
-        title.setFont(font)
+        title.setObjectName("pageTitle")  # Tamanho e cor vêm do tema.
         return title
 
     def _source_and_output(self, destination: str) -> QGridLayout:
@@ -414,9 +411,7 @@ class ExtractPage(QWidget):
 
     def _show(self, message: texts.Message) -> None:
         self.status.setText(message.text)
-        self.status.setProperty("tone", message.tone.name.lower())  # Para o tema (JOW-18).
-        color = TONE_COLORS[message.tone]
-        self.status.setStyleSheet(f"color: {color};" if color else "")
+        theme.set_tone(self.status, message.tone.name.lower())  # A cor vem do tema.
 
     def _set_working(self, working: bool) -> None:
         self._working = working

@@ -129,6 +129,16 @@ Arquivos que o PyInstaller inclui, mas o app não usa. Devem ser excluídos no `
 - plugins de plataforma `qdirect2d`, `qoffscreen` e `qminimal` (só o `qwindows` é necessário no app; os testes usam `offscreen` pelo Python, não pelo pacote)
 - traduções do Qt, exceto `qtbase_pt_BR.qm` e `qtmultimedia_pt_BR.qm`
 
+**Não excluir:** `Qt6Svg`, o plugin `iconengines\qsvgicon` e o `imageformats\qsvg`. Os ícones do tema (JOW-18) são SVG e ficariam em branco sem eles.
+
+## Tema visual (JOW-18)
+
+- `presentation/qt/theme.py` guarda **todas** as cores (`COLORS`) e medidas (`METRICS`). Nenhuma outra tela define cor ou tamanho de fonte; um teste (`tests/integration/test_qt_theme.py`) falha se alguém fizer isso.
+- `assets/theme/ytdown.qss` é a folha de estilo. Ela só usa nomes entre chaves duplas, como `{{accent}}`, que o `theme.render_stylesheet` troca pelos valores (um nome desconhecido é erro). Atenção: escreva `QSlider::handle:focus`, nunca `QSlider:focus::handle`, que o Qt aplica ao widget inteiro (o teste também verifica).
+- `assets/theme/icons/` tem os ícones próprios, em SVG, só com as cores `icon` e `icon_muted`. No código, `theme.icon("play")`.
+- Mensagens com cor usam `theme.set_tone(widget, "error" | "success" | "neutral")`.
+- O tema usa o estilo Fusion, a paleta escura do `theme.palette()` e o esquema de cores escuro do Windows (barra de título escura). O contraste segue o WCAG 2.1 (4,5:1 para texto, 3:1 para o foco), verificado nos testes.
+
 **Estimativa para o ytDown 2.0:** cerca de 327 MB descompactado (hoje: 263 MB) e cerca de 140 MB no `.zip` do Release (hoje: 113 MB). O maior item continua sendo o `ffmpeg.exe` de conversão, com 212 MB.
 
 **Conclusão:** o Qt atende ao player. Não é preciso um backend de áudio alternativo.

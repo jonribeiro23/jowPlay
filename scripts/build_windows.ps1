@@ -28,6 +28,7 @@ $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
     --icon "$root\assets\icon.ico" `
     --add-data "$root\assets\icon.ico;assets" `
     --add-data "$root\assets\default_cover.jpg;assets" `
+    --add-data "$root\assets\theme;assets\theme" `
     --add-binary "$ffmpeg;ffmpeg" `
     "$root\main.py"
 if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o executável." }

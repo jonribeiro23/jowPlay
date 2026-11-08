@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from ytdown.application.ports import ShareServer
 from ytdown.presentation import texts
+from ytdown.presentation.qt import theme
 
 # Recebe a função a chamar quando algo muda (em outra thread) e devolve o servidor.
 ShareServerFactory = Callable[[Callable[[], None]], ShareServer]
@@ -66,19 +67,14 @@ class SendDialog(QDialog):
 
     def _build(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(*[theme.PAGE_MARGIN] * 4)
         layout.addWidget(QLabel(STEPS))
 
-        code_title = QLabel("Código de pareamento")
-        code_title.setContentsMargins(0, 8, 0, 0)
-        layout.addWidget(code_title)
+        layout.addSpacing(theme.METRICS["space_s"])
+        layout.addWidget(QLabel("Código de pareamento"))
         self.code = QLabel()
-        self.code.setObjectName("pairingCode")
+        self.code.setObjectName("pairingCode")  # Grande e em destaque pelo tema.
         self.code.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        font = self.code.font()
-        font.setPointSizeF(font.pointSizeF() * 2.4)
-        font.setBold(True)
-        self.code.setFont(font)
         layout.addWidget(self.code)
 
         self.address = QLabel()
@@ -87,7 +83,7 @@ class SendDialog(QDialog):
         self.address.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(self.address)
 
-        layout.addSpacing(8)
+        layout.addSpacing(theme.METRICS["space_s"])
         layout.addWidget(QLabel("Áudios disponíveis para o celular"))
         self.files = QTreeWidget()
         self.files.setObjectName("sharedFiles")

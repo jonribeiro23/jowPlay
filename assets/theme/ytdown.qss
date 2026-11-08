@@ -1,0 +1,405 @@
+/*
+ * Tema do ytDown, inspirado no Windows Media Player do Windows 7.
+ * Cores e medidas vêm de ytdown/presentation/qt/theme.py: use o nome entre chaves duplas
+ * (como em "color: {{text}}"), nunca a cor direta.
+ * Fontes em pt e medidas em px independentes da escala do Windows (100%, 125%, 150%...).
+ */
+
+/* --- Base ------------------------------------------------------------------------- */
+
+QWidget {
+    font-family: "Segoe UI";
+    font-size: 9pt;
+    color: {{text}};
+}
+
+QMainWindow, QDialog {
+    background: {{window}};
+}
+
+QWidget:disabled {
+    color: {{text_disabled}};
+}
+
+QToolTip {
+    background: {{surface_alt}};
+    color: {{text}};
+    border: 1px solid {{border_light}};
+    padding: {{space_xs}};
+}
+
+QLabel#pageTitle {
+    font-size: 16pt;
+    font-weight: 300;
+    color: {{text}};
+    padding-bottom: {{space_xs}};
+}
+
+QLabel#pageHint, QLabel#paneHint {
+    color: {{text_muted}};
+}
+
+QLabel#paneTitle {
+    font-weight: 600;
+    color: {{text_muted}};
+    padding: {{space_xs}} 0;
+}
+
+QLabel[tone="success"] { color: {{success}}; }
+QLabel[tone="error"] { color: {{error}}; }
+
+/* --- Áreas da janela ---------------------------------------------------------------- */
+
+QStackedWidget#pages {
+    background: {{surface}};
+}
+
+QWidget#playQueuePane {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{pane_top}}, stop:1 {{pane_bottom}});
+}
+
+QSplitter#mainSplitter::handle {
+    background: {{border}};
+    width: 1px;
+}
+
+/* --- Árvore de navegação ------------------------------------------------------------ */
+
+QTreeWidget#navigation {
+    background: {{nav}};
+    border: none;
+    padding: {{space_s}} {{space_xs}};
+    outline: 0;
+    show-decoration-selected: 0;
+}
+
+/* O Qt pinta a linha inteira com o realce do item; só uma cor sólida no recuo o esconde. */
+QTreeWidget#navigation::branch {
+    background: {{nav}};
+}
+
+QTreeWidget#navigation::item {
+    padding: {{space_xs}} {{space_xs}};
+    border: 1px solid transparent;
+    border-radius: {{radius}};
+}
+
+QTreeWidget#navigation::item:hover {
+    background: {{surface_alt}};
+}
+
+QTreeWidget#navigation::item:selected {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{selection_top}}, stop:1 {{selection_bottom}});
+    color: {{text_on_accent}};
+}
+
+/* Com o foco do teclado na árvore, o item atual ganha a borda de foco. (Escrever
+   "#navigation:focus::item" faria o Qt pôr a borda na árvore inteira.) */
+QTreeWidget#navigation::item:selected:focus {
+    border: 1px solid {{focus}};
+}
+
+QTreeView::branch:has-children:closed {
+    image: url(icons:chevron-right.svg);
+}
+
+QTreeView::branch:has-children:open {
+    image: url(icons:chevron-down.svg);
+}
+
+/* --- Listas e tabelas --------------------------------------------------------------- */
+
+QTreeWidget, QListWidget {
+    background: {{input}};
+    alternate-background-color: {{surface_alt}};
+    border: 1px solid {{border}};
+    border-radius: {{radius}};
+    outline: 0;
+}
+
+QTreeWidget:focus, QListWidget:focus {
+    border: 1px solid {{focus}};
+}
+
+QTreeWidget::item, QListWidget::item {
+    padding: 3px {{space_xs}};
+}
+
+QTreeWidget::item:selected, QListWidget::item:selected {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{selection_top}}, stop:1 {{selection_bottom}});
+    color: {{text_on_accent}};
+}
+
+QListWidget#playQueue {
+    background: transparent;
+    border: none;
+}
+
+QHeaderView::section {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{header_top}}, stop:1 {{header_bottom}});
+    color: {{text_muted}};
+    border: none;
+    border-right: 1px solid {{border}};
+    border-bottom: 1px solid {{border}};
+    padding: {{space_xs}} {{space_s}};
+}
+
+/* --- Campos ------------------------------------------------------------------------- */
+
+QLineEdit, QPlainTextEdit, QComboBox {
+    background: {{input}};
+    border: 1px solid {{border}};
+    border-radius: {{radius}};
+    padding: {{space_xs}};
+    selection-background-color: {{selection_top}};
+    selection-color: {{text_on_accent}};
+}
+
+QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover {
+    border-color: {{border_light}};
+}
+
+QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+    border: 1px solid {{focus}};
+}
+
+QLineEdit:disabled, QPlainTextEdit:disabled, QComboBox:disabled {
+    background: {{surface}};
+    color: {{text_disabled}};
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 22px;
+}
+
+QComboBox::down-arrow {
+    image: url(icons:chevron-down.svg);
+    width: 14px;
+    height: 14px;
+}
+
+QComboBox QAbstractItemView {
+    background: {{surface_alt}};
+    border: 1px solid {{border_light}};
+    selection-background-color: {{selection_top}};
+    selection-color: {{text_on_accent}};
+    outline: 0;
+}
+
+QGroupBox {
+    border: 1px solid {{border}};
+    border-radius: {{radius_l}};
+    margin-top: {{space_m}};
+    padding: {{space_m}} {{space_s}} {{space_s}} {{space_s}};
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: {{space_s}};
+    padding: 0 {{space_xs}};
+    color: {{text_muted}};
+}
+
+/* --- Botões ------------------------------------------------------------------------- */
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{button_top}}, stop:1 {{button_bottom}});
+    border: 1px solid {{border_light}};
+    border-radius: {{radius}};
+    padding: 5px {{space_m}};
+    min-width: 72px;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{button_hover_top}}, stop:1 {{button_hover_bottom}});
+}
+
+QPushButton:pressed {
+    background: {{button_bottom}};
+}
+
+QPushButton:focus {
+    border: 1px solid {{focus}};
+}
+
+QPushButton:default {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{selection_top}}, stop:1 {{accent_dark}});
+    border-color: {{accent}};
+    color: {{text_on_accent}};
+}
+
+QPushButton:default:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{accent}}, stop:1 {{selection_bottom}});
+}
+
+QPushButton:default:focus {
+    border: 1px solid {{focus}};
+}
+
+QPushButton:disabled, QPushButton:default:disabled {
+    background: {{surface_alt}};
+    border-color: {{border}};
+    color: {{text_disabled}};
+}
+
+/* --- Barra de progresso ------------------------------------------------------------- */
+
+QProgressBar {
+    background: {{input}};
+    border: 1px solid {{border}};
+    border-radius: {{radius}};
+    max-height: 8px;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {{accent_light}}, stop:1 {{accent}});
+    border-radius: 2px;
+}
+
+/* --- Barra de controles ------------------------------------------------------------- */
+
+QWidget#transportBar {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 {{bar_top}}, stop:0.45 {{bar_middle}}, stop:1 {{bar_bottom}});
+    border-top: 1px solid {{border_light}};
+}
+
+QWidget#transportBar QLabel {
+    background: transparent;
+}
+
+QLabel#nowPlaying {
+    font-weight: 600;
+}
+
+QLabel#timeLabel {
+    color: {{text_muted}};
+}
+
+QWidget#transportBar QToolButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 17px;
+}
+
+QWidget#transportBar QToolButton:hover {
+    background: {{button_hover_bottom}};
+    border-color: {{border_light}};
+}
+
+QWidget#transportBar QToolButton:focus {
+    border-color: {{focus}};
+}
+
+QWidget#transportBar QToolButton:checked {
+    background: {{button_bottom}};
+    border-color: {{accent}};
+}
+
+QWidget#transportBar QToolButton#queueToggle {
+    border-radius: {{radius}};
+    padding: 0 {{space_s}};
+}
+
+/* Botão de tocar: maior, redondo e azul, no centro da barra. */
+QWidget#transportBar QToolButton#playButton {
+    border-radius: 26px;
+    border: 1px solid {{accent_dark}};
+    background: qradialgradient(cx:0.5, cy:0.3, radius:0.75, fx:0.5, fy:0.15,
+                                stop:0 {{play_top}}, stop:0.5 {{play_middle}}, stop:1 {{play_bottom}});
+}
+
+QWidget#transportBar QToolButton#playButton:hover {
+    border-color: {{accent_light}};
+}
+
+QWidget#transportBar QToolButton#playButton:focus {
+    border: 2px solid {{focus}};
+}
+
+QWidget#transportBar QToolButton#playButton:disabled {
+    background: qradialgradient(cx:0.5, cy:0.3, radius:0.75, fx:0.5, fy:0.15,
+                                stop:0 {{border_light}}, stop:1 {{button_bottom}});
+    border-color: {{border}};
+}
+
+/* --- Controles deslizantes ---------------------------------------------------------- */
+
+QSlider::groove:horizontal {
+    height: 4px;
+    background: {{border}};
+    border-radius: 2px;
+}
+
+QSlider::add-page:horizontal {
+    background: {{border}};
+    border-radius: 2px;
+}
+
+QSlider::sub-page:horizontal {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {{accent_dark}}, stop:1 {{accent_light}});
+    border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+    width: 12px;
+    margin: -5px 0;
+    border-radius: 6px;
+    background: qradialgradient(cx:0.5, cy:0.35, radius:0.7, stop:0 {{text}}, stop:1 {{accent}});
+    border: 1px solid {{accent_dark}};
+}
+
+QSlider::handle:horizontal:focus {
+    border: 1px solid {{focus}};
+}
+
+QSlider::sub-page:horizontal:disabled {
+    background: {{border_light}};
+}
+
+QSlider::handle:horizontal:disabled {
+    background: {{border_light}};
+    border-color: {{border}};
+}
+
+/* --- Barras de rolagem -------------------------------------------------------------- */
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle {
+    background: {{border_light}};
+    border-radius: 4px;
+    min-height: 24px;
+    min-width: 24px;
+    margin: 1px;
+}
+
+QScrollBar::handle:hover {
+    background: {{text_disabled}};
+}
+
+QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+    width: 0;
+    height: 0;
+}
+
+/* --- Janela "Enviar para o celular" ------------------------------------------------- */
+
+QLabel#pairingCode {
+    font-size: 26pt;
+    font-weight: 700;
+    color: {{accent_light}};
+    letter-spacing: 2px;
+}

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QListWidget, QVBoxLayout, QWidget
+
+from ytdown.presentation.qt import theme
 
 TITLE = "Lista de reprodução"
 EMPTY_MESSAGE = "A lista de reprodução está vazia."
@@ -12,6 +15,7 @@ class PlayQueuePane(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("playQueuePane")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)  # Para o gradiente do tema.
         self.setMinimumWidth(200)
 
         title = QLabel(TITLE)
@@ -23,7 +27,7 @@ class PlayQueuePane(QWidget):
         self.empty_message.setWordWrap(True)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(*[theme.PANE_MARGIN] * 4)
         layout.addWidget(title)
         layout.addWidget(self.empty_message)
         layout.addWidget(self.items, stretch=1)

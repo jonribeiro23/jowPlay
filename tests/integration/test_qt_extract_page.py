@@ -127,7 +127,7 @@ class ExtractPageTests(unittest.TestCase):
         self.run_extraction(page, URL_1, URL_2)
         self.assertEqual(page.status.text(),
                          "Não foi possível extrair o áudio.\nNão foi possível ler a imagem de capa: x.png")
-        self.assertIn("b00020", page.status.styleSheet())
+        self.assertEqual(page.status.property("tone"), "error")  # A cor vem do tema (test_qt_theme).
 
     # --- fila
 

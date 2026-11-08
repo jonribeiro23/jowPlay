@@ -38,11 +38,13 @@ def run() -> int:
     from ytdown.presentation.qt.main_window import MainWindow
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
     from ytdown.presentation.qt.send_dialog import PhoneSharing
+    from ytdown.presentation.qt.theme import apply_theme
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = QApplication(sys.argv)
     app.setApplicationName("ytDown")
     app.setWindowIcon(QIcon(str(asset("icon.ico"))))
+    apply_theme(app, asset("theme"))
     extract_batch = build_extract_batch()
     sharing = PhoneSharing(create_share_server)
 

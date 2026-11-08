@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
 
+from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.pages import PageId
 
 LIBRARY_LABEL = "Biblioteca"
 _LIBRARY_PAGES = (PageId.SONGS, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES)
 _TOP_LEVEL_PAGES = (PageId.PLAYLISTS, PageId.EXTRACT)
 _PAGE_ROLE = Qt.ItemDataRole.UserRole
+PAGE_ICONS = {
+    PageId.SONGS: "songs",
+    PageId.ARTISTS: "artists",
+    PageId.ALBUMS: "albums",
+    PageId.GENRES: "genres",
+    PageId.PLAYLISTS: "playlists",
+    PageId.EXTRACT: "extract",
+}
+LIBRARY_ICON = "library"
 
 
 class NavigationPane(QTreeWidget):
@@ -22,9 +32,12 @@ class NavigationPane(QTreeWidget):
         self.setHeaderHidden(True)
         self.setRootIsDecorated(True)
         self.setMinimumWidth(160)
+        size = theme.METRICS["nav_icon_size"]
+        self.setIconSize(QSize(size, size))
         self._items: dict[PageId, QTreeWidgetItem] = {}
 
         library = QTreeWidgetItem(self, [LIBRARY_LABEL])
+        library.setIcon(0, theme.icon(LIBRARY_ICON))
         library.setFlags(Qt.ItemFlag.ItemIsEnabled)  # Só agrupa; não é uma página.
         for page in _LIBRARY_PAGES:
             self._add(page, library)
@@ -36,6 +49,7 @@ class NavigationPane(QTreeWidget):
 
     def _add(self, page: PageId, parent) -> None:
         item = QTreeWidgetItem(parent, [page.title])
+        item.setIcon(0, theme.icon(PAGE_ICONS[page]))
         item.setData(0, _PAGE_ROLE, page)
         self._items[page] = item
 
