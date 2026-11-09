@@ -125,7 +125,8 @@ class MainWindow(QMainWindow):
         return area
 
     def _pages(self) -> list[QWidget]:
-        return list(self._page_widgets.values()) + getattr(self, "background_dialogs", [])
+        return (list(self._page_widgets.values()) + getattr(self, "background_dialogs", [])
+                + getattr(self, "background_jobs", []))
 
     def show_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])

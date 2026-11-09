@@ -209,4 +209,8 @@ Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.
 
 O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
 
+## Integridade da biblioteca (JOW-27)
+
+`CheckLibrary` roda numa `QThread` depois que a janela abre e sincroniza o campo `Track.missing` com os arquivos da pasta gerenciada. A raiz inteira indisponível não prova que todas as faixas foram apagadas: a checagem não escreve no índice e a interface mostra um único aviso. Erros pontuais de acesso também preservam o último estado da faixa. `RemoveUnavailableTracks` confirma novamente a ausência antes de remover apenas o registro; as cópias da faixa que estavam na fila de reprodução são purgadas pelo ID.
+
 `build_main_window` conecta as páginas aos serviços compartilhados. O bootstrap cria um único `QtAudioPlayer` e um `Playback`; fechar a janela para a reprodução e chama `shutdown()` para liberar o arquivo, depois de cancelar e aguardar eventual extração. Os objetos multimídia pertencem à QApplication. Ao carregar uma faixa já enfileirada, Playback consulta seu registro atualizado, evitando caminhos antigos após uma extração com Substituir; a ordem da fila permanece a original. Os itens ainda não carregados da fila são snapshots e são atualizados no momento de carregar. A faixa corrente exposta e sua duração de fallback usam os metadados carregados.

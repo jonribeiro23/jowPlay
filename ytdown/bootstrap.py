@@ -92,6 +92,7 @@ def run() -> int:
     extract_batch = build_extract_batch()
     sharing = PhoneSharing(create_share_server)
     window = build_main_window(library, playback, extract_batch, sharing)
+    start_library_check(window, library)
     window.closing.connect(player.shutdown)
     window.show()
     exit_code = app.exec()
@@ -112,12 +113,14 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.options_dialog import OptionsDialog
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
     from ytdown.presentation.qt.songs_page import SongsPage
+    from ytdown.application.library import RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
     from ytdown.infrastructure.import_files import FileSystemImportFiles
     from ytdown.presentation.qt.import_dialog import ImportDialog
 
     pages = {}
+    remove_unavailable_case = RemoveUnavailableTracks(library.storage, library.tracks)
 
     def page_factory(page: PageId):
         if page is PageId.SONGS:
@@ -134,13 +137,14 @@ def build_main_window(library, playback, extract_batch, sharing):
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
 
     window.background_dialogs = []
+    window.background_jobs = []
     def importing():
         return any(d.is_working() for d in window.background_dialogs)
 
-    pages[PageId.EXTRACT].external_busy = importing
+    pages[PageId.EXTRACT].external_busy = lambda: importing() or checking()
 
     def open_import():
-        if pages[PageId.EXTRACT].is_working() or importing():
+        if pages[PageId.EXTRACT].is_working() or importing() or checking():
             return
         dialog = ImportDialog(ImportAudios(library.storage, library.tracks, MutagenMetadataReader(),
                               FileSystemImportFiles()), pages[PageId.EXTRACT].is_working, window)
@@ -152,10 +156,11 @@ def build_main_window(library, playback, extract_batch, sharing):
     window.import_requested.connect(open_import)
 
     def open_options() -> None:
-        if importing():
+        if importing() or checking():
             return
         extract_page = pages[PageId.EXTRACT]
-        dialog = OptionsDialog(lambda: library.register.folder, library.change_folder, lambda: extract_page.is_working() or importing(),
+        dialog = OptionsDialog(lambda: library.register.folder, library.change_folder,
+                               lambda: extract_page.is_working() or importing() or checking(),
                                window)
         window.background_dialogs.append(dialog)
         dialog.finished.connect(lambda: window.background_dialogs.remove(dialog))
@@ -164,4 +169,36 @@ def build_main_window(library, playback, extract_batch, sharing):
 
     window.options_requested.connect(open_options)
     window.closing.connect(playback.stop)
+
+    def checking() -> bool:
+        check = getattr(window, "library_check", None)
+        return bool(check and check.is_working())
+
+    def remove_unavailable():
+        return set() if checking() else remove_unavailable_case()
+
+    pages[PageId.SONGS]._remove_unavailable = remove_unavailable
+    pages[PageId.SONGS]._update_count()
+
     return window
+
+
+def start_library_check(window, library) -> None:
+    """Começa depois de montar a janela; testes de composição não precisam criar uma thread."""
+    from PySide6.QtWidgets import QMessageBox
+    from ytdown.application.library import CheckLibrary
+    from ytdown.presentation.qt.library_check import LibraryCheck
+    from ytdown.presentation.qt.pages import PageId
+
+    check = LibraryCheck(CheckLibrary(library.storage, library.tracks), window)
+    window.library_check = check
+    window.background_jobs.append(check)
+
+    def checked(result) -> None:
+        window.page(PageId.SONGS).refresh()
+        if not result.root_available and result.indexed:
+            QMessageBox.warning(window, "Biblioteca indisponível",
+                                "A pasta da biblioteca não está disponível. Nenhuma faixa foi marcada como ausente.")
+
+    check.finished.connect(checked)
+    check.start()

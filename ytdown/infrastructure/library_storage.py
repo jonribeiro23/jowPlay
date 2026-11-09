@@ -26,6 +26,13 @@ class FileSystemLibraryStorage:
     def root(self) -> Path:
         return self._root
 
+    def is_available(self) -> bool:
+        """Não cria a raiz: a primeira extração continua responsável por isso."""
+        try:
+            return self._root.is_dir()
+        except OSError:
+            return False
+
     def absolute(self, rel_path: str) -> Path:
         """Recusa qualquer caminho que possa sair da biblioteca. No Windows, "C:/x" em
         joinpath troca de unidade e "..\\" sobe de pasta, então ":" e "\\" não são aceitos.

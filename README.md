@@ -195,4 +195,6 @@ Na página **Músicas**, clique no cabeçalho para ordenar por título, artista,
 
 Use Ctrl ou Shift para selecionar várias faixas. Dê duplo clique ou pressione Enter para tocar a faixa atual: toda a lista, na ordem exibida, vira a fila de reprodução. Arquivos marcados como indisponíveis aparecem esmaecidos. A lista é atualizada automaticamente quando uma extração termina, inclusive quando parte do lote falha ou é cancelada.
 
+Ao abrir o app, a biblioteca é verificada em segundo plano. Se um arquivo tiver sido removido da pasta gerenciada, sua faixa fica indisponível; se ele voltar, fica disponível outra vez. O botão **Remover faixas indisponíveis** apaga somente os respectivos registros da biblioteca, depois de confirmar que os arquivos continuam ausentes. Se toda a pasta da biblioteca estiver inacessível, o app avisa uma vez e não altera as faixas indexadas.
+
 Os controles da barra de reprodução continuam reservados à JOW-28; a contagem de reproduções será implementada na JOW-38.

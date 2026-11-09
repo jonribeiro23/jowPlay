@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
+from threading import Event
 
 from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository
 from ytdown.domain.errors import ExtractionError, LibraryError, UnreadableAudio
@@ -16,6 +17,84 @@ from ytdown.domain.text import search_key
 from ytdown.domain.urls import canonical_video_url
 
 LIBRARY_FOLDER_KEY = "library_folder"
+
+
+@dataclass(frozen=True)
+class CheckLibraryResult:
+    """Resumo da verificação para a interface decidir o que comunicar."""
+
+    indexed: int
+    checked: int = 0
+    changed: int = 0
+    errors: int = 0
+    root_available: bool = True
+    cancelled: bool = False
+
+
+class CheckLibrary:
+    """Sincroniza ``Track.missing`` com os arquivos da raiz gerenciada.
+
+    Uma raiz ausente (inclusive antes da primeira extração) ou uma unidade
+    inacessível não demonstra que todo arquivo do índice desapareceu. Nesse caso
+    esta operação não toca nas faixas.
+    """
+
+    def __init__(self, storage: LibraryStorage, tracks: TrackRepository) -> None:
+        self._storage = storage
+        self._tracks = tracks
+
+    def __call__(self, cancel: Event | None = None) -> CheckLibraryResult:
+        cancel = cancel or Event()
+        indexed = self._tracks.list_tracks()
+        if cancel.is_set():
+            return CheckLibraryResult(indexed=len(indexed), cancelled=True)
+        if not self._storage.is_available():
+            return CheckLibraryResult(indexed=len(indexed), root_available=False)
+
+        checked = changed = errors = 0
+        for track in indexed:
+            if cancel.is_set():
+                return CheckLibraryResult(
+                    indexed=len(indexed), checked=checked, changed=changed,
+                    errors=errors, cancelled=True,
+                )
+            try:
+                missing = not self._storage.exists(track.rel_path)
+            except (LibraryError, OSError):
+                # Um erro pontual é inconclusivo; conserva o último estado.
+                errors += 1
+                continue
+            checked += 1
+            if track.missing != missing:
+                self._tracks.update(replace(track, missing=missing))
+                changed += 1
+        return CheckLibraryResult(indexed=len(indexed), checked=checked, changed=changed, errors=errors)
+
+
+class RemoveUnavailableTracks:
+    """Remove do índice somente faixas ainda indisponíveis, sem tocar no disco."""
+
+    def __init__(self, storage: LibraryStorage, tracks: TrackRepository) -> None:
+        self._storage = storage
+        self._tracks = tracks
+
+    def __call__(self) -> set[int]:
+        if not self._storage.is_available():
+            return set()
+        removed: set[int] = set()
+        for track in self._tracks.list_tracks():
+            if not track.missing or track.id is None:
+                continue
+            try:
+                present = self._storage.exists(track.rel_path)
+            except (LibraryError, OSError):
+                continue
+            if present:
+                self._tracks.update(replace(track, missing=False))
+            else:
+                self._tracks.remove(track.id)
+                removed.add(track.id)
+        return removed
 
 
 def known_genres(tracks: TrackRepository) -> list[str]:

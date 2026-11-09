@@ -1,7 +1,7 @@
 """Lista virtualizada da biblioteca, com ordenação delegada ao repositório."""
 from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, Qt
 from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import QAbstractItemView, QApplication, QLabel, QMenu, QTableView, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QAbstractItemView, QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QTableView, QVBoxLayout, QWidget
 
 from ytdown.application.ports import Settings, TrackRepository
 from ytdown.application.playback import Playback
@@ -69,15 +69,24 @@ class TrackTableModel(QAbstractTableModel):
 
 class SongsPage(QWidget):
     """A tabela tem seu próprio viewport: nunca cresce com o número de faixas."""
-    def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings):
+    def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings,
+                 remove_unavailable=None):
         super().__init__()
         self.setObjectName("page-songs")
         self.playback, self.settings = playback, settings
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*[theme.PAGE_MARGIN] * 4)
+        heading = QHBoxLayout()
         title = QLabel("Músicas")
         title.setObjectName("pageTitle")
-        layout.addWidget(title)
+        heading.addWidget(title)
+        heading.addStretch()
+        self.remove_unavailable_button = QPushButton("Remover faixas indisponíveis")
+        self.remove_unavailable_button.setToolTip("Remove somente os registros de arquivos que continuam ausentes.")
+        self._remove_unavailable = remove_unavailable
+        self.remove_unavailable_button.clicked.connect(self.remove_unavailable)
+        heading.addWidget(self.remove_unavailable_button)
+        layout.addLayout(heading)
         self.table = QTableView()
         self.model = TrackTableModel(repository, self)
         self.table.setModel(self.model)
@@ -146,5 +155,14 @@ class SongsPage(QWidget):
     def refresh(self):
         self.model.refresh()
 
+    def remove_unavailable(self) -> None:
+        if self._remove_unavailable is None:
+            return
+        removed = self._remove_unavailable()
+        self.playback.remove_tracks(removed)
+        self.refresh()
+
     def _update_count(self):
+        missing = sum(track.missing for track in self.model.tracks)
         self.count.setText(f"{self.model.rowCount()} faixas")
+        self.remove_unavailable_button.setEnabled(bool(missing) and self._remove_unavailable is not None)

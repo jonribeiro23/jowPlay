@@ -126,6 +126,28 @@ class PlayQueue(Generic[T]):
         self._order.remove(entry)
         return was_current
 
+    def remove_items(self, predicate) -> tuple[int, bool]:
+        """Remove todas as entradas que satisfaçam ``predicate``.
+
+        Devolve quantas saíram e se a entrada atual saiu. Quando isso acontece,
+        conserva a próxima entrada ainda válida na ordem de reprodução, inclusive
+        com aleatório ligado. Entradas repetidas continuam sendo entradas distintas.
+        """
+        removed = {entry for entry in self._entries if predicate(entry.item)}
+        if not removed:
+            return 0, False
+
+        was_current = self._current in removed
+        if was_current:
+            position = self._order.index(self._current)
+            following = [entry for entry in self._order[position + 1:] if entry not in removed]
+            if not following and self.repeat is not RepeatMode.OFF:
+                following = [entry for entry in self._order[:position] if entry not in removed]
+            self._current = following[0] if following else None
+        self._entries = [entry for entry in self._entries if entry not in removed]
+        self._order = [entry for entry in self._order if entry not in removed]
+        return len(removed), was_current
+
     def move(self, from_index: int, to_index: int) -> None:
         """Muda um item de lugar na lista. Sem o aleatório, muda também a ordem de reprodução."""
         entry = self._entries.pop(from_index)

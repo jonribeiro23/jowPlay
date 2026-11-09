@@ -105,6 +105,20 @@ class SongsTests(unittest.TestCase):
         self.assertEqual(self.player.path.name, 'replacement.mp3')
         self.assertEqual(self.playback.current, new)
 
+    def test_remove_unavailable_removes_it_from_list_and_queue(self):
+        missing = next(track for track in self.page.model.tracks if track.missing)
+        self.playback.play_tracks(self.page.model.tracks)
+
+        def remove():
+            self.repo.remove(missing.id)
+            return {missing.id}
+
+        self.page._remove_unavailable = remove
+        self.page._update_count()
+        self.page.remove_unavailable_button.click()
+        self.assertNotIn(missing, self.page.model.tracks)
+        self.assertNotIn(missing, self.playback.queue)
+
     def test_bootstrap_extraction_refresh_shutdown_and_5000_rows(self):
         library = build_library(self.root/'db.sqlite', self.root/'prefs.json', self.root/'music')
         self.addCleanup(library.close)

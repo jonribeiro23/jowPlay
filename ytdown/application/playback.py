@@ -184,6 +184,29 @@ class Playback:
                 self._load(self._queue.current)
         self._notify_queue()
 
+    def remove_tracks(self, track_ids: Iterable[int]) -> None:
+        """Remove da fila todas as cópias dos IDs que acabaram de sair do índice.
+
+        A operação é por ID, não por snapshot de ``Track``: uma faixa substituída ou
+        repetida na fila não pode sobreviver por acidente. Se a atual foi removida,
+        começa a próxima ainda válida (ou para ao esvaziar a fila).
+        """
+        removed_ids = set(track_ids)
+        if not removed_ids:
+            return
+        removed, was_current = self._queue.remove_items(
+            lambda track: track.id is not None and track.id in removed_ids
+        )
+        if not removed:
+            return
+        if was_current:
+            if self._state is PlayerState.PLAYING:
+                self._start(self._queue.current)
+            else:
+                self._player.stop()
+                self._load(self._queue.current)
+        self._notify_queue()
+
     def move(self, from_index: int, to_index: int) -> None:
         self._queue.move(from_index, to_index)
         self._notify_queue()

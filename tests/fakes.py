@@ -82,6 +82,7 @@ class FakeLibraryStorage:
         self._root = root
         self.max_length = max_length
         self.files: dict[str, bytes] = {}
+        self.available = True
         self.trashed: list[str] = []
         self.discarded: list[str] = []
         self.fail_trash = False
@@ -89,6 +90,9 @@ class FakeLibraryStorage:
     @property
     def root(self) -> Path:
         return self._root
+
+    def is_available(self) -> bool:
+        return self.available
 
     def absolute(self, rel_path: str) -> Path:
         return self._root.joinpath(*rel_path.split("/"))

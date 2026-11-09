@@ -72,6 +72,9 @@ class LibraryStorage(Protocol):
     @property
     def root(self) -> Path: ...
 
+    def is_available(self) -> bool:
+        """Se a raiz gerenciada pode ser examinada agora."""
+
     def absolute(self, rel_path: str) -> Path: ...
 
     def exists(self, rel_path: str) -> bool: ...
