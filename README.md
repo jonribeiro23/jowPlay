@@ -115,6 +115,7 @@ ytdown/
   infrastructure/          implementações dessas interfaces
     youtube.py             download e conversão (yt-dlp + ffmpeg)
     tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
+    qt_audio_player.py     toca os áudios (QtMultimedia)
     sharing/               servidor HTTP/UDP para o celular e celulares pareados
     sqlite_library.py,     índice da biblioteca (SQLite) e a pasta gerenciada
       library_storage.py

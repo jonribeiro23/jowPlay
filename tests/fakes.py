@@ -6,7 +6,7 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
-from ytdown.application.ports import DownloadedAudio
+from ytdown.application.ports import DownloadedAudio, PlayerState
 from ytdown.domain import library
 from ytdown.domain.errors import InvalidCover, LibraryError, UnreadableAudio
 from ytdown.domain.library import DuplicatePolicy, Track, TrackQuery
@@ -150,6 +150,95 @@ class FakeLibrary:
 
     def destination(self, on_duplicate=DuplicatePolicy.KEEP_BOTH):
         return FakeDestination(self.folder, on_duplicate)
+
+
+class FakeAudioPlayer:
+    """AudioPlayer sem som, para os testes do caso de uso de reprodução.
+
+    Faz o que o real faz de forma síncrona e deixa o teste provocar o resto: `advance` (a faixa
+    andou), `finish` (terminou sozinha) e `fail` (erro ao tocar). `durations` dá a duração de
+    cada arquivo; um arquivo em `broken` falha ao carregar.
+    """
+
+    def __init__(self, durations: dict[Path, int] | None = None) -> None:
+        self.durations = durations or {}
+        self.broken: set[Path] = set()
+        self.listener = None
+        self.loaded: list[Path] = []
+        self.path: Path | None = None
+        self._state = PlayerState.STOPPED
+        self._position = 0
+        self.volume = 80
+        self.muted = False
+
+    def set_listener(self, listener) -> None:
+        self.listener = listener
+
+    def load(self, path: Path) -> None:
+        self._set_state(PlayerState.STOPPED)
+        self.loaded.append(path)
+        self._position = 0
+        if path in self.broken:
+            self.path = None
+            self.listener.on_error(f"Não foi possível tocar \"{path.name}\".")
+            return
+        self.path = path
+        self.listener.on_duration(self.duration_ms)
+
+    def play(self) -> None:
+        if self.path is not None:
+            self._set_state(PlayerState.PLAYING)
+
+    def pause(self) -> None:
+        if self._state is PlayerState.PLAYING:
+            self._set_state(PlayerState.PAUSED)
+
+    def stop(self) -> None:
+        self._position = 0
+        self._set_state(PlayerState.STOPPED)
+
+    def seek(self, position_ms: int) -> None:
+        self._position = max(0, position_ms)
+        self.listener.on_position(self._position)
+
+    @property
+    def state(self) -> PlayerState:
+        return self._state
+
+    @property
+    def position_ms(self) -> int:
+        return self._position
+
+    @property
+    def duration_ms(self) -> int:
+        return self.durations.get(self.path, 180_000) if self.path else 0
+
+    def set_volume(self, volume: int) -> None:
+        self.volume = min(100, max(0, volume))
+
+    def set_muted(self, muted: bool) -> None:
+        self.muted = muted
+
+    # --- o teste provoca
+
+    def advance(self, ms: int) -> None:
+        self._position += ms
+        self.listener.on_position(self._position)
+
+    def finish(self) -> None:
+        self._position = self.duration_ms
+        self._set_state(PlayerState.STOPPED)
+        self.listener.on_finished()
+
+    def fail(self, message: str = "Não foi possível tocar o áudio.") -> None:
+        self._set_state(PlayerState.STOPPED)
+        self.listener.on_error(message)
+
+    def _set_state(self, state: PlayerState) -> None:
+        if state is not self._state:
+            self._state = state
+            if self.listener:
+                self.listener.on_state(state)
 
 
 class InMemoryTrackRepository:

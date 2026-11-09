@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 from typing import Protocol
 
@@ -97,6 +98,71 @@ class LibraryStorage(Protocol):
         Devolve {caminho antigo: caminho novo} dos arquivos que precisaram de outro nome.
         Se algo falhar, desfaz o que já foi movido e falha com LibraryError.
         """
+
+
+class PlayerState(Enum):
+    STOPPED = auto()
+    PLAYING = auto()
+    PAUSED = auto()
+
+
+class PlayerListener(Protocol):
+    """Avisos do player. Chegam na thread da interface, a mesma que chama o player."""
+
+    def on_position(self, position_ms: int) -> None: ...
+
+    def on_duration(self, duration_ms: int) -> None: ...
+
+    def on_state(self, state: PlayerState) -> None: ...
+
+    def on_finished(self) -> None:
+        """A faixa chegou ao fim sozinha (não é chamado por `stop` nem ao trocar de faixa)."""
+
+    def on_error(self, message: str) -> None:
+        """A faixa não pode ser tocada (arquivo ausente, corrompido...). O player fica parado e
+        continua utilizável: basta carregar outra faixa. `message` já é o texto para o usuário.
+        """
+
+
+class AudioPlayer(Protocol):
+    """Toca um arquivo de áudio por vez. Carregar outro arquivo substitui o atual (nunca há
+    dois tocando ao mesmo tempo). Nada aqui lança exceção: problemas viram `on_error`.
+    """
+
+    def set_listener(self, listener: PlayerListener) -> None: ...
+
+    def load(self, path: Path) -> None:
+        """Prepara o arquivo para tocar do começo, parando o anterior. Não começa a tocar."""
+
+    def play(self) -> None: ...
+
+    def pause(self) -> None: ...
+
+    def stop(self) -> None:
+        """Para e volta ao começo da faixa."""
+
+    def seek(self, position_ms: int) -> None: ...
+
+    @property
+    def state(self) -> PlayerState: ...
+
+    @property
+    def position_ms(self) -> int: ...
+
+    @property
+    def duration_ms(self) -> int:
+        """0 enquanto o arquivo não terminou de carregar."""
+
+    @property
+    def volume(self) -> int:
+        """De 0 a 100, na escala que o ouvido percebe (o meio do controle soa como metade)."""
+
+    def set_volume(self, volume: int) -> None: ...
+
+    @property
+    def muted(self) -> bool: ...
+
+    def set_muted(self, muted: bool) -> None: ...
 
 
 class Settings(Protocol):

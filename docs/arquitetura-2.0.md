@@ -42,6 +42,16 @@ bootstrap.py     monta tudo
 
 O `QtAudioPlayer` fica em `infrastructure`, atrás do port `AudioPlayer`. Assim, a lógica de reprodução (fila, próxima faixa, aleatório, estatísticas) é testada sem tocar áudio.
 
+**Player (JOW-23):**
+- **Port:** o `AudioPlayer` (em `application/ports.py`) carrega, toca, pausa, para, posiciona e controla volume (0–100, na escala do ouvido) e mudo.
+- **Avisos:** posição, duração, estado, fim da faixa e erro chegam a um `PlayerListener`, na thread da interface.
+- **Erros:** nada lança exceção. Arquivo ausente ou corrompido vira `on_error` com a mensagem para o usuário, e o player continua utilizável.
+- **Um player só:** o `QtAudioPlayer` usa um único `QMediaPlayer` para todas as faixas, então trocar de faixa nunca deixa dois áudios tocando.
+- **Testes:**
+  - os testes do caso de uso usam o dublê `FakeAudioPlayer` (`tests/fakes.py`);
+  - os de integração tocam arquivos reais, sempre no mudo;
+  - neles, não use `QTest.qWait`: depois do aviso de fim de faixa do QtMultimedia, ele nunca mais volta e o teste trava (PySide6 6.12, Windows). Use `pause`/`wait_until` de `tests/qt_support.py`, que usam um `QEventLoop` comum.
+
 ### Threads
 
 - Extração, importação e geração de miniaturas rodam fora da thread da interface (`QThreadPool`) e avisam por sinais Qt.

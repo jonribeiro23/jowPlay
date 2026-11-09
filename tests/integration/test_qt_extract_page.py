@@ -5,7 +5,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-from tests.qt_support import dispose, qt_app, wait_until
+from tests.qt_support import dispose, pause, qt_app, wait_until
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
@@ -379,7 +379,7 @@ class SmallWindowTests(unittest.TestCase):
         window.show_page(PageId.EXTRACT)
         page = window.page(PageId.EXTRACT)
         page._show(texts.Message("Uma mensagem longa\n" * 6))
-        QTest.qWait(50)
+        pause(50)
         for field in (page.year_field, page.track_field, page.album_field, page.cover_field):
             with self.subTest(field.objectName() or type(field).__name__):
                 self.assertGreaterEqual(field.height(), field.minimumSizeHint().height())

@@ -2,7 +2,7 @@
 
 import unittest
 
-from tests.qt_support import dispose, qt_app
+from tests.qt_support import dispose, pause, qt_app
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QLabel
@@ -90,7 +90,7 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual((self.window.minimumWidth(), self.window.minimumHeight()), MINIMUM_SIZE)
         before = self.window.splitter.sizes()
         self.window.resize(self.window.width() + 300, self.window.height())
-        QTest.qWait(50)
+        pause(50)
         after = self.window.splitter.sizes()
         self.assertEqual((after[0], after[2]), (before[0], before[2]))
         self.assertEqual(after[1], before[1] + 300)

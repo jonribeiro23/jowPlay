@@ -9,8 +9,7 @@ os.environ.setdefault("QT_LOGGING_RULES", "qt.multimedia.ffmpeg*=false")
 import time  # noqa: E402
 from collections.abc import Callable  # noqa: E402
 
-from PySide6.QtCore import QCoreApplication, QEvent  # noqa: E402
-from PySide6.QtTest import QTest  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer  # noqa: E402
 from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402
 
 
@@ -30,6 +29,17 @@ def qt_app() -> QApplication:
     return QApplication.instance() or QApplication([])
 
 
+def pause(ms: int) -> None:
+    """Deixa o Qt trabalhar por `ms` milissegundos, com um laço de eventos comum.
+
+    Não use QTest.qWait: depois que o QtMultimedia avisa o fim de uma faixa, ele nunca mais
+    volta (visto com o PySide6 6.12 no Windows), e o teste trava.
+    """
+    loop = QEventLoop()
+    QTimer.singleShot(ms, loop.quit)
+    loop.exec()
+
+
 def wait_until(condition: Callable[[], bool], timeout_ms: int = 5000) -> bool:
     """Processa eventos do Qt até `condition` ser verdadeira ou o tempo acabar.
 
@@ -39,5 +49,5 @@ def wait_until(condition: Callable[[], bool], timeout_ms: int = 5000) -> bool:
     while time.monotonic() < deadline:
         if condition():
             return True
-        QTest.qWait(10)
+        pause(10)
     return condition()
