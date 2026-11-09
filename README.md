@@ -110,7 +110,7 @@ O código segue a Clean Architecture: está dividido em camadas, e cada camada s
 main.py                    ponto de entrada (também usado pelo PyInstaller)
 ytdown/
   domain/                  conceitos e regras puras: formatos, metadados, URLs, erros
-  application/             casos de uso (ExtractAudio, ExtractBatch, RegisterExtractedTrack, SharingSession)
+  application/             casos de uso (ExtractAudio, ExtractBatch, RegisterExtractedTrack, Playback, SharingSession)
     ports.py               interfaces de que os casos de uso precisam
   infrastructure/          implementações dessas interfaces
     youtube.py             download e conversão (yt-dlp + ffmpeg)

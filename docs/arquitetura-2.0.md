@@ -94,6 +94,13 @@ A tabela `tracks` também guarda colunas derivadas (nomes de exibição, textos 
   - **Repetir uma** só vale quando a faixa termina sozinha. Próxima e Anterior, pedidos pelo usuário, mudam de faixa e dão a volta na fila.
   - **Anterior** com mais de 3 s de faixa recomeça a faixa.
   - **Fim da fila:** sem repetir, a fila para.
+  - **Caso de uso** (`application/playback.py`, JOW-24): `Playback` é o único ponto que a interface usa para tocar.
+    - Comandos: tocar uma lista a partir de uma faixa, tocar/pausar, parar, próxima, anterior, posicionar, volume, mudo, aleatório, repetir e edição da fila.
+    - Avisos por `PlaybackListener`: faixa atual, estado, posição, fila alterada e faixa indisponível.
+    - Ao fim de uma faixa, a fila decide a próxima.
+    - Faixa que não toca (arquivo sumido ou corrompido) é avisada e pulada, como se o usuário pedisse a próxima: com "repetir uma", não insiste nela. Se nenhuma faixa da fila toca, o player para, em vez de girar para sempre.
+    - Avisos de uma faixa já trocada são ignorados.
+    - A contagem de reproduções fica para a JOW-38.
 - **Abrir o app:** `CheckLibrary` marca como indisponíveis as faixas cujo arquivo sumiu.
 - **Importar:** lê áudios extraídos antes da 2.0, copia para a biblioteca e ignora duplicatas pela URL de origem ou pelo conteúdo.
 
