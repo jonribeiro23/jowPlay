@@ -216,3 +216,8 @@ A barra de reprodução (JOW-28) controla tocar/pausar, anterior, próxima, alea
 O cache descartável de miniaturas usa `%LOCALAPPDATA%/ytDown/thumbs` (na ausência da variável, `~/AppData/Local/ytDown/thumbs`). Capas embutidas são identificadas por SHA-256 dos bytes originais e compartilhadas entre faixas; a imagem PNG preserva proporções e tem no máximo 200 px por lado. Registro e importação agendam a geração em segundo plano. A barra de reprodução mantém a capa padrão enquanto aguarda a leitura. Falhas do cache não impedem a operação da biblioteca.
 
 A grade e a edição de capas ainda não estão implementadas. Para integrar uma futura edição, chame `ThumbnailCache.request(caminho_do_audio)` depois de gravar a capa; consumidores devem chamar `get_or_create` em segundo plano. A limpeza explícita `cleanup(caminhos)` também deve rodar em segundo plano, recebendo uma relação completa e estável de todos os áudios da biblioteca, sem alterações concorrentes na biblioteca. Se algum áudio não puder ser lido, nenhuma miniatura é removida. A limpeza não é automática.
+# Artistas e gêneros
+
+As páginas de artistas e gêneros agrupam faixas sem metadados em grupos desconhecidos. Artistas exibem quantidades de álbuns e faixas, uma grade de álbuns e todas as faixas; gêneros exibem suas faixas. Em ambos, **Tocar tudo** usa as faixas do grupo. A busca considera título, artista, álbum e gênero; as contagens representam o grupo inteiro. A biblioteca é atualizada após extração e importação.
+
+A grade de álbuns do artista apresenta nomes e contagens, sem capas ou abertura direta do álbum; a página Álbuns oferece esses recursos.

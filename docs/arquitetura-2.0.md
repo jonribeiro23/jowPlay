@@ -244,3 +244,6 @@ Capas são lidas e decodificadas em um worker daemon, sem acesso ao repositório
 `AlbumsPage` apresenta uma grade `QListView` com viewport próprio. Agrupa pelo nome de exibição e artista, usa a primeira faixa na ordem do álbum para a capa e ordena as faixas por número, com ausentes no fim. A ordenação por inclusão usa a primeira data de cada grupo, mais recente primeiro. O detalhe usa o mesmo Playback e o breadcrumb inclui o nome do álbum; o histórico continua sendo por página. A busca normalizada filtra o nome e o artista do álbum inteiro.
 
 As capas são solicitadas sob demanda pela grade e resolvidas em um executor de uma thread usando o cache JOW-31; a interface usa a capa padrão enquanto espera ou em caso de erro. A atualização invalida resultados antigos e o fechamento cancela tarefas pendentes sem bloquear a interface. O teste offscreen exercita 500 álbuns, ordenação, busca, reprodução e rolagem.
+# Navegação por artistas e gêneros
+
+`GroupsPage` usa os resumos do domínio e consultas do repositório para agrupar e filtrar artistas e gêneros. A busca seleciona grupos que contenham alguma faixa correspondente; detalhes e contagens incluem todo o grupo. O refresh da página de músicas também atualiza os grupos após alterações da biblioteca.

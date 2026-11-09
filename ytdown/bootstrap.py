@@ -119,6 +119,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
     from ytdown.presentation.qt.songs_page import SongsPage
     from ytdown.presentation.qt.albums_page import AlbumsPage
+    from ytdown.presentation.qt.groups_page import GroupsPage
     from ytdown.application.library import RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
@@ -134,6 +135,8 @@ def build_main_window(library, playback, extract_batch, sharing):
         elif page is PageId.ALBUMS:
             pages[page] = AlbumsPage(library.tracks, playback, library.storage, library.thumbnails,
                                      asset("default_cover.jpg"))
+        elif page in (PageId.ARTISTS, PageId.GENRES):
+            pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre")
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))
@@ -145,6 +148,12 @@ def build_main_window(library, playback, extract_batch, sharing):
     window.navigation.set_counts(library.tracks)
     pages[PageId.SONGS].model.modelReset.connect(lambda: window.navigation.set_counts(library.tracks))
     pages[PageId.SONGS].model.modelReset.connect(pages[PageId.ALBUMS].refresh)
+    for group_page in (PageId.ARTISTS, PageId.GENRES):
+        pages[PageId.SONGS].model.modelReset.connect(pages[group_page].refresh)
+        pages[group_page].detail_changed.connect(
+            lambda title, page=group_page: window.breadcrumb.setText(
+                "Biblioteca › " + page.title + (" › " + title if title else ""))
+            if window.current_page() is page else None)
     pages[PageId.ALBUMS].detail_changed.connect(
         lambda title: window.breadcrumb.setText("Biblioteca › Álbuns" + (" › " + title if title else ""))
         if window.current_page() is PageId.ALBUMS else None)
