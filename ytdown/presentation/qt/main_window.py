@@ -35,6 +35,7 @@ PageFactory = Callable[[PageId], QWidget]
 
 class MainWindow(QMainWindow):
     options_requested = Signal()
+    closing = Signal()
 
     def __init__(self, page_factory: PageFactory = PlaceholderPage) -> None:
         super().__init__()
@@ -104,6 +105,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             self.hide()
             return
+        self.closing.emit()
         event.accept()
 
     @staticmethod

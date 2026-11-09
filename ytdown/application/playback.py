@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
-from ytdown.application.ports import AudioPlayer, LibraryStorage, PlayerState
+from ytdown.application.ports import AudioPlayer, LibraryStorage, PlayerState, TrackRepository
 from ytdown.domain.errors import LibraryError
 from ytdown.domain.library import Track
 from ytdown.domain.play_queue import PlayQueue, RepeatMode
@@ -35,7 +35,11 @@ class PlaybackListener(Protocol):
 
 
 class Playback:
-    def __init__(self, player: AudioPlayer, storage: LibraryStorage, rng: random.Random | None = None) -> None:
+    def __init__(self, player: AudioPlayer, storage: LibraryStorage, rng: random.Random | None = None,
+                 tracks: TrackRepository | None = None) -> None:
+        self._loaded_track: Track | None = None
+        self._loaded_queue_track: Track | None = None
+        self._tracks = tracks
         self._player = player
         self._storage = storage
         self._queue: PlayQueue[Track] = PlayQueue(rng)
@@ -52,7 +56,10 @@ class Playback:
 
     @property
     def current(self) -> Track | None:
-        return self._queue.current
+        queued = self._queue.current
+        if queued is not None and queued is self._loaded_queue_track:
+            return self._loaded_track
+        return queued
 
     @property
     def current_index(self) -> int | None:
@@ -76,7 +83,7 @@ class Playback:
     @property
     def duration_ms(self) -> int:
         """A do player; enquanto ele carrega, a guardada na biblioteca."""
-        current = self._queue.current
+        current = self.current
         return self._player.duration_ms or (current.duration_ms if current else 0)
 
     @property
@@ -230,6 +237,10 @@ class Playback:
         """Carrega sem tocar. Devolve False se não há o que tocar ou se a faixa falhou ao carregar
         (nesse caso, o aviso de erro já tratou de pular para outra).
         """
+        self._loaded_queue_track = track
+        if track is not None and self._tracks is not None and track.id is not None:
+            track = self._tracks.get(track.id) or track
+        self._loaded_track = track
         self._loading += 1
         loading = self._loading
         self._notify(lambda listener: listener.on_track_changed(track))

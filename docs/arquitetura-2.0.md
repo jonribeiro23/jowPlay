@@ -175,3 +175,11 @@ Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.
 - **Tamanho do app:** medido no spike; ver "Tamanho do pacote" acima.
 - **Licença do Qt:** PySide6 e o FFmpeg do Qt são LGPLv3. Desde a JOW-21, o build copia `licencas/qt` (LGPLv3, GPLv3, onde obter o código-fonte) e a versão usada para `dist\ytDown\licencas\qt`. As DLLs do Qt ficam separadas e sem modificações, como a LGPL pede.
 - **Áudios espalhados pelo disco:** extrações anteriores à 2.0 estão em pastas escolhidas pelo usuário. A importação os traz para a biblioteca.
+
+## Lista de músicas (JOW-25)
+
+`SongsPage` usa `QTableView` e `TrackTableModel` sobre `TrackRepository`. Os dados são consultados uma vez por atualização ou ordenação, com `TrackQuery`; pintar uma célula não consulta SQLite nem o disco. A tabela mantém seu viewport e rolagem interna mesmo dentro do `QScrollArea` da janela. O teste offscreen monta a janela com 5.000 faixas reais no SQLite e verifica contagem, ordenação e rolagem.
+
+O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
+
+`build_main_window` conecta as páginas aos serviços compartilhados. O bootstrap cria um único `QtAudioPlayer` e um `Playback`; fechar a janela para a reprodução e chama `shutdown()` para liberar o arquivo, depois de cancelar e aguardar eventual extração. Os objetos multimídia pertencem à QApplication. Ao carregar uma faixa já enfileirada, Playback consulta seu registro atualizado, evitando caminhos antigos após uma extração com Substituir; a ordem da fila permanece a original. Os itens ainda não carregados da fila são snapshots e são atualizados no momento de carregar. A faixa corrente exposta e sua duração de fallback usam os metadados carregados.

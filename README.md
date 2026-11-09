@@ -172,3 +172,11 @@ Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mut
 ## Uso responsável
 
 Baixe apenas conteúdo que você tem direito de usar. Os Termos de Serviço do YouTube e as leis de direitos autorais continuam valendo.
+
+### Ouvir a biblioteca (JOW-25)
+
+Na página **Músicas**, clique no cabeçalho para ordenar por título, artista, álbum, duração, gênero, ano, número da faixa, data de inclusão ou reproduções. Arraste os cabeçalhos para reordenar as colunas; clique com o botão direito no cabeçalho para esconder ou mostrar cada uma. Essas preferências, incluindo larguras e ordenação, ficam salvas nas configurações.
+
+Use Ctrl ou Shift para selecionar várias faixas. Dê duplo clique ou pressione Enter para tocar a faixa atual: toda a lista, na ordem exibida, vira a fila de reprodução. Arquivos marcados como indisponíveis aparecem esmaecidos. A lista é atualizada automaticamente quando uma extração termina, inclusive quando parte do lote falha ou é cancelada.
+
+Os controles da barra de reprodução continuam reservados à JOW-28; a contagem de reproduções será implementada na JOW-38.

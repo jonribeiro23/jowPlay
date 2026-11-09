@@ -8,6 +8,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from ytdown.application.playback import Playback
+from ytdown.application.ports import Settings, LibraryStorage
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
 from ytdown.application.library import ChangeLibraryFolder, RegisterExtractedTrack, known_genres, library_folder
 from ytdown.application.sharing import SharingSession
@@ -38,6 +40,8 @@ class Library:
     register: RegisterExtractedTrack
     change_folder: ChangeLibraryFolder
     tracks: SqliteTrackRepository
+    settings: Settings
+    storage: LibraryStorage
 
     def close(self) -> None:
         self.tracks.close()
@@ -53,6 +57,8 @@ def build_library(db_path: Path | None = None, settings_path: Path | None = None
         register=RegisterExtractedTrack(storage, tracks, MutagenMetadataReader()),
         change_folder=ChangeLibraryFolder(storage, tracks, settings),
         tracks=tracks,
+        settings=settings,
+        storage=storage,
     )
 
 
@@ -67,10 +73,7 @@ def run() -> int:
     from PySide6.QtWidgets import QApplication, QMessageBox
 
     from ytdown.domain.errors import LibraryError
-    from ytdown.presentation.qt.extract_page import ExtractPage
-    from ytdown.presentation.qt.main_window import MainWindow
-    from ytdown.presentation.qt.options_dialog import OptionsDialog
-    from ytdown.presentation.qt.pages import PageId, PlaceholderPage
+    from ytdown.infrastructure.qt_audio_player import QtAudioPlayer
     from ytdown.presentation.qt.send_dialog import PhoneSharing
     from ytdown.presentation.qt.theme import apply_theme
 
@@ -84,12 +87,38 @@ def run() -> int:
     except LibraryError as exc:  # Ex.: biblioteca criada por uma versão mais nova do app.
         QMessageBox.critical(None, "ytDown", str(exc))
         return 1
+    player = QtAudioPlayer(app)
+    playback = Playback(player, library.storage, tracks=library.tracks)
     extract_batch = build_extract_batch()
     sharing = PhoneSharing(create_share_server)
+    window = build_main_window(library, playback, extract_batch, sharing)
+    window.closing.connect(player.shutdown)
+    window.show()
+    exit_code = app.exec()
+    playback.stop()
+    player.shutdown()
+    sharing.stop()  # O app pode sair com a janela de envio aberta; o servidor não pode continuar.
+    # Apaga a janela enquanto a QApplication ainda existe; deixar para o fim do processo
+    # faz o Python destruí-las em ordem qualquer, e o app pode cair ao fechar.
+    del window
+    library.close()
+    return exit_code
+
+
+def build_main_window(library, playback, extract_batch, sharing):
+    """Monta a janela com os mesmos servicos compartilhados, inclusive nos testes offscreen."""
+    from ytdown.presentation.qt.extract_page import ExtractPage
+    from ytdown.presentation.qt.main_window import MainWindow
+    from ytdown.presentation.qt.options_dialog import OptionsDialog
+    from ytdown.presentation.qt.pages import PageId, PlaceholderPage
+    from ytdown.presentation.qt.songs_page import SongsPage
+
     pages = {}
 
     def page_factory(page: PageId):
-        if page is PageId.EXTRACT:
+        if page is PageId.SONGS:
+            pages[page] = SongsPage(library.tracks, playback, library.settings)
+        elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))
         else:
@@ -97,6 +126,7 @@ def run() -> int:
         return pages[page]
 
     window = MainWindow(page_factory)
+    pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
 
     def open_options() -> None:
@@ -107,11 +137,5 @@ def run() -> int:
         dialog.open()
 
     window.options_requested.connect(open_options)
-    window.show()
-    exit_code = app.exec()
-    sharing.stop()  # O app pode sair com a janela de envio aberta; o servidor não pode continuar.
-    # Apaga a janela enquanto a QApplication ainda existe; deixar para o fim do processo
-    # faz o Python destruí-las em ordem qualquer, e o app pode cair ao fechar.
-    del window, pages
-    library.close()
-    return exit_code
+    window.closing.connect(playback.stop)
+    return window
