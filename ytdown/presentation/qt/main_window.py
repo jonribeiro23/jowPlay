@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal, QTimer
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QScrollArea,
     QSplitter,
@@ -102,6 +103,19 @@ class MainWindow(QMainWindow):
         header.addWidget(self.back_button)
         header.addWidget(self.forward_button)
         header.addWidget(self.breadcrumb, 1)
+        self.search = QLineEdit()
+        self.search.setObjectName("librarySearch")
+        self.search.setPlaceholderText("Buscar músicas")
+        self.search.setClearButtonEnabled(True)
+        header.addWidget(self.search)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(250)
+        self._search_timer.timeout.connect(self._apply_search)
+        self.search.textChanged.connect(lambda: self._search_timer.start())
+        QShortcut(QKeySequence("Ctrl+F"), self, activated=self.search.setFocus)
+        self._escape_search = QShortcut(QKeySequence(Qt.Key.Key_Escape), self.search)
+        self._escape_search.activated.connect(self._clear_search)
         content_layout.addLayout(header)
         content_layout.addWidget(self.pages, 1)
         self.back_button.clicked.connect(lambda: self._move_history(-1))
@@ -168,6 +182,12 @@ class MainWindow(QMainWindow):
 
     def _display_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])
+        searchable = callable(getattr(self._page_widgets[page], "set_search_text", None))
+        self.search.setEnabled(searchable)
+        self.search.setPlaceholderText("Buscar nesta página" if searchable else "Busca indisponível nesta página")
+        if searchable:
+            self._search_timer.stop()
+            self._apply_search()
         if self.navigation.current_page() != page:
             self.navigation.blockSignals(True)
             try:
@@ -193,3 +213,13 @@ class MainWindow(QMainWindow):
 
     def page(self, page: PageId) -> QWidget:
         return self._page_widgets[page]
+
+    def _apply_search(self) -> None:
+        handler = getattr(self.page(self.current_page()), "set_search_text", None)
+        if callable(handler):
+            handler(self.search.text())
+
+    def _clear_search(self) -> None:
+        self.search.clear()
+        self._search_timer.stop()
+        self._apply_search()

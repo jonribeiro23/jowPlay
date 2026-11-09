@@ -8,6 +8,13 @@ Use **Importar áudios extraídos...** na barra lateral. Adicione uma ou mais pa
 com extrações antigas e clique em **Importar**. O app procura MP3, M4A, FLAC e WAV
 também nas subpastas e copia os arquivos para a biblioteca gerenciada, preservando
 os originais, etiquetas e capas. Não há busca automática pela coleção do computador.
+
+Na página Músicas, use a busca no topo (Ctrl+F) para filtrar título, artista,
+álbum e gênero sem diferenciar acentos ou maiúsculas; Esc limpa o campo. As
+palavras podem aparecer em campos diferentes. A busca é aplicada após uma breve
+pausa na digitação e preserva a ordenação e a fila de reprodução. Artistas e
+Álbuns ainda são páginas provisórias e dependem da implementação dessas páginas
+para oferecer busca própria.
 Arquivos antigos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
 
 Duplicatas são ignoradas pela URL canônica de origem ou pelo SHA-256 dos bytes,

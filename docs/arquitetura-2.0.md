@@ -207,6 +207,13 @@ Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.
 
 `SongsPage` usa `QTableView` e `TrackTableModel` sobre `TrackRepository`. Os dados são consultados uma vez por atualização ou ordenação, com `TrackQuery`; pintar uma célula não consulta SQLite nem o disco. A tabela mantém seu viewport e rolagem interna mesmo dentro do `QScrollArea` da janela. O teste offscreen monta a janela com 5.000 faixas reais no SQLite e verifica contagem, ordenação e rolagem.
 
+A busca no cabeçalho usa Ctrl+F, Esc para limpar e debounce de 250 ms. A janela
+encaminha o texto às páginas que oferecem `set_search_text`; Músicas aplica-o
+em `TrackQuery`, preservando ordenação, seleção e fila. O SQLite compara palavras
+normalizadas em título, artista, álbum e gênero. Artistas e Álbuns permanecem
+provisórios: sua busca depende da implementação dessas páginas e da adoção do
+contrato, não estando disponível atualmente.
+
 O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
 
 A árvore mostra contagens dos repositórios de faixas e resumos de artistas, álbuns e gêneros. A atualização do modelo de músicas também atualiza essas contagens após extração, importação, verificação e remoção. O histórico da janela alimenta as setas e o breadcrumb; `navigation.last_page` compartilha o mesmo `Settings` e valores inválidos retornam a Músicas. Playlists permanece uma página reservada, pois ainda não há repositório implementado.

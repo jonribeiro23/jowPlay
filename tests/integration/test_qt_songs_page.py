@@ -9,6 +9,7 @@ from pathlib import Path
 from tests.qt_support import qt_app, dispose, pause, wait_until
 from PySide6.QtCore import Qt, QItemSelectionModel
 from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QWidget
 from tests.fakes import (FakeAudioPlayer, FakeLibraryStorage, InMemoryTrackRepository,
                          FakeDownloader, FakeCovers, FakeTags, FakeReader)
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
@@ -19,6 +20,7 @@ from ytdown.domain.library import Track, TrackQuery
 from ytdown.infrastructure.json_settings import JsonSettings
 from ytdown.presentation.qt.songs_page import SongsPage, COLUMNS
 from ytdown.presentation.qt.pages import PageId
+from ytdown.presentation.qt.main_window import MainWindow
 from ytdown.presentation.qt.send_dialog import PhoneSharing
 
 
@@ -95,6 +97,39 @@ class SongsTests(unittest.TestCase):
         self.assertEqual(restored.table.horizontalHeader().visualIndex(0), 3)
         self.assertEqual(restored.model.query, self.page.model.query)
         self.assertEqual(JsonSettings(self.root / 'settings.json').get('library_folder'), 'C:/Nova')
+
+    def test_search_debounce_shortcuts_sort_selection_and_queue(self):
+        self.repo.add(Track('accent.mp3', 'Canção', datetime.now(), artist='João', album='Verão', genre='Baião'))
+        window = MainWindow(lambda page: self.page if page == PageId.SONGS else QWidget())
+        self.addCleanup(dispose, window)
+        self.addCleanup(self.page.setParent, None)
+        window.show()
+        window.activateWindow()
+        pause(20)
+        self.page.refresh()
+        self.page.table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
+        self.page.table.selectRow(0)
+        selected = self.page.model.tracks[0].id
+        self.playback.play_tracks(self.page.model.tracks)
+        queue = list(self.playback.queue)
+        QTest.keyClick(window, Qt.Key.Key_F, Qt.KeyboardModifier.ControlModifier)
+        self.assertTrue(window.search.hasFocus())
+        QTest.keyClicks(window.search, 'CANCAO joao verao baiao')
+        self.assertEqual(self.page.model.rowCount(), 4)
+        pause(300)
+        self.assertEqual([t.title for t in self.page.model.tracks], ['Canção'])
+        self.assertEqual(self.playback.queue, queue)
+        self.page.table.sortByColumn(1, Qt.SortOrder.DescendingOrder)
+        self.assertEqual(self.page.model.query.text, 'CANCAO joao verao baiao')
+        window.show_page(PageId.ARTISTS)
+        self.assertFalse(window.search.isEnabled())
+        window.show_page(PageId.SONGS)
+        QTest.keyClick(window.search, Qt.Key.Key_Escape)
+        self.assertEqual(self.page.model.rowCount(), 4)
+        self.assertEqual(self.page.model.query.text, '')
+        self.assertEqual(self.page.model.query.sort, COLUMNS[1][1])
+        self.assertEqual({self.page.model.tracks[i.row()].id for i in self.page.table.selectionModel().selectedRows()}, {selected})
+        self.assertEqual(self.playback.queue, queue)
 
     def test_replaced_track_in_queue_loads_fresh_path(self):
         tracks = self.repo.list_tracks()

@@ -1,4 +1,5 @@
 """Lista virtualizada da biblioteca, com ordenação delegada ao repositório."""
+from dataclasses import replace
 from PySide6.QtCore import QAbstractTableModel, QByteArray, QMimeData, QModelIndex, Qt
 from PySide6.QtGui import QDrag, QPalette
 from PySide6.QtWidgets import QAbstractItemView, QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QTableView, QVBoxLayout, QWidget
@@ -69,7 +70,12 @@ class TrackTableModel(QAbstractTableModel):
 
     def sort(self, column, order=Qt.SortOrder.AscendingOrder):
         if 0 <= column < len(COLUMNS):
-            self.query = TrackQuery(sort=COLUMNS[column][1], descending=order == Qt.SortOrder.DescendingOrder)
+            self.query = replace(self.query, sort=COLUMNS[column][1], descending=order == Qt.SortOrder.DescendingOrder)
+            self.refresh()
+
+    def set_search_text(self, text):
+        if text != self.query.text:
+            self.query = replace(self.query, text=text)
             self.refresh()
 
     def refresh(self):
@@ -122,6 +128,8 @@ class SongsPage(QWidget):
         header.sortIndicatorChanged.connect(self.save_preferences)
         self.model.modelAboutToBeReset.connect(self._remember_selection)
         self.model.modelReset.connect(self._restore_selection)
+        self._selected_ids = set()
+        self._current_id = None
         self.table.activated.connect(self.play_index)
         layout.addWidget(self.table, 1)
         self.count = QLabel()
@@ -150,9 +158,14 @@ class SongsPage(QWidget):
             self.playback.play_tracks(self.model.tracks, index.row())
 
     def _remember_selection(self):
-        self._selected_ids = {self.model.tracks[i.row()].id for i in self.table.selectionModel().selectedRows()}
+        visible_ids = {track.id for track in self.model.tracks}
+        self._selected_ids.difference_update(visible_ids)
+        self._selected_ids.update(self.model.tracks[i.row()].id for i in self.table.selectionModel().selectedRows())
         current = self.table.currentIndex()
-        self._current_id = self.model.tracks[current.row()].id if current.isValid() else None
+        if current.isValid():
+            self._current_id = self.model.tracks[current.row()].id
+        elif self._current_id in visible_ids:
+            self._current_id = None
 
     def _restore_selection(self):
         from PySide6.QtCore import QItemSelection, QItemSelectionModel
@@ -167,6 +180,9 @@ class SongsPage(QWidget):
 
     def refresh(self):
         self.model.refresh()
+
+    def set_search_text(self, text):
+        self.model.set_search_text(text)
 
     def remove_unavailable(self) -> None:
         if self._remove_unavailable is None:
