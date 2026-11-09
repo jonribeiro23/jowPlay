@@ -118,6 +118,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.options_dialog import OptionsDialog
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
     from ytdown.presentation.qt.songs_page import SongsPage
+    from ytdown.presentation.qt.albums_page import AlbumsPage
     from ytdown.application.library import RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
@@ -130,6 +131,9 @@ def build_main_window(library, playback, extract_batch, sharing):
     def page_factory(page: PageId):
         if page is PageId.SONGS:
             pages[page] = SongsPage(library.tracks, playback, library.settings)
+        elif page is PageId.ALBUMS:
+            pages[page] = AlbumsPage(library.tracks, playback, library.storage, library.thumbnails,
+                                     asset("default_cover.jpg"))
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))
@@ -140,6 +144,10 @@ def build_main_window(library, playback, extract_batch, sharing):
     window = MainWindow(page_factory, settings=library.settings)
     window.navigation.set_counts(library.tracks)
     pages[PageId.SONGS].model.modelReset.connect(lambda: window.navigation.set_counts(library.tracks))
+    pages[PageId.SONGS].model.modelReset.connect(pages[PageId.ALBUMS].refresh)
+    pages[PageId.ALBUMS].detail_changed.connect(
+        lambda title: window.breadcrumb.setText("Biblioteca › Álbuns" + (" › " + title if title else ""))
+        if window.current_page() is PageId.ALBUMS else None)
     window.play_queue.bind(playback)
     window.closing.connect(window.play_queue.shutdown)
     from PySide6.QtGui import QPixmap

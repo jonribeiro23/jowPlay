@@ -210,9 +210,8 @@ Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.
 A busca no cabeçalho usa Ctrl+F, Esc para limpar e debounce de 250 ms. A janela
 encaminha o texto às páginas que oferecem `set_search_text`; Músicas aplica-o
 em `TrackQuery`, preservando ordenação, seleção e fila. O SQLite compara palavras
-normalizadas em título, artista, álbum e gênero. Artistas e Álbuns permanecem
-provisórios: sua busca depende da implementação dessas páginas e da adoção do
-contrato, não estando disponível atualmente.
+normalizadas em título, artista, álbum e gênero. Álbuns filtra nome e artista;
+Artistas permanece provisória.
 
 O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
 
@@ -238,4 +237,10 @@ Capas são lidas e decodificadas em um worker daemon, sem acesso ao repositório
 
 ### Miniaturas de capas
 
-`ThumbnailCache` é a porta de aplicação; `FileThumbnailCache` lê capas pelo `MetadataReader`, usa Pillow e persiste PNGs por hash dos bytes originais em `%LOCALAPPDATA%/ytDown/thumbs`. `request` enfileira trabalho fora da interface; `get_or_create` e `cleanup` são operações bloqueantes para workers. A limpeza exige snapshot completo e estável dos caminhos da biblioteca, interrompe antes de excluir se qualquer leitura falhar e só remove nomes reconhecidos do cache. Grade e edição de capa são futuras: após uma edição, a integração deve agendar `request` para o arquivo atualizado.
+`ThumbnailCache` é a porta de aplicação; `FileThumbnailCache` lê capas pelo `MetadataReader`, usa Pillow e persiste PNGs por hash dos bytes originais em `%LOCALAPPDATA%/ytDown/thumbs`. `request` enfileira trabalho fora da interface; `get_or_create` e `cleanup` são operações bloqueantes para workers. A limpeza exige snapshot completo e estável dos caminhos da biblioteca, interrompe antes de excluir se qualquer leitura falhar e só remove nomes reconhecidos do cache. A edição de capa é futura.
+
+## Álbuns (JOW-33)
+
+`AlbumsPage` apresenta uma grade `QListView` com viewport próprio. Agrupa pelo nome de exibição e artista, usa a primeira faixa na ordem do álbum para a capa e ordena as faixas por número, com ausentes no fim. A ordenação por inclusão usa a primeira data de cada grupo, mais recente primeiro. O detalhe usa o mesmo Playback e o breadcrumb inclui o nome do álbum; o histórico continua sendo por página. A busca normalizada filtra o nome e o artista do álbum inteiro.
+
+As capas são solicitadas sob demanda pela grade e resolvidas em um executor de uma thread usando o cache JOW-31; a interface usa a capa padrão enquanto espera ou em caso de erro. A atualização invalida resultados antigos e o fechamento cancela tarefas pendentes sem bloquear a interface. O teste offscreen exercita 500 álbuns, ordenação, busca, reprodução e rolagem.

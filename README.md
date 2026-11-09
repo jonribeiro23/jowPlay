@@ -12,9 +12,12 @@ os originais, etiquetas e capas. Não há busca automática pela coleção do co
 Na página Músicas, use a busca no topo (Ctrl+F) para filtrar título, artista,
 álbum e gênero sem diferenciar acentos ou maiúsculas; Esc limpa o campo. As
 palavras podem aparecer em campos diferentes. A busca é aplicada após uma breve
-pausa na digitação e preserva a ordenação e a fila de reprodução. Artistas e
-Álbuns ainda são páginas provisórias e dependem da implementação dessas páginas
-para oferecer busca própria.
+pausa na digitação e preserva a ordenação e a fila de reprodução. Em Álbuns, ela
+filtra nome e artista. A grade permite ordenar por álbum, artista, ano ou data de
+inclusão (primeira faixa, mais recentes primeiro). Selecione uma capa e clique em
+**Abrir álbum** ou pressione Enter para ver as faixas e tocar o álbum; duplo clique
+na capa inicia diretamente a reprodução. Capas ausentes usam a imagem padrão.
+Artistas ainda é uma página provisória.
 Arquivos antigos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
 
 Duplicatas são ignoradas pela URL canônica de origem ou pelo SHA-256 dos bytes,
