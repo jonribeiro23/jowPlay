@@ -1,5 +1,32 @@
 # ytDown 2.0: player e bibliotecas
 
+## Importação de extrações antigas (JOW-26)
+
+`application/importing.py` compõe `ImportAudios` sobre `MetadataReader`,
+`TrackRepository`, `LibraryStorage` e o novo port `ImportFiles`. Não depende de Qt.
+O adaptador `FileSystemImportFiles` faz varredura explícita e recursiva sem seguir
+links/junções, elimina sobreposição entre pastas e exclui a raiz gerenciada mesmo
+quando sua pasta pai é selecionada. SHA-256 verifica bytes inalterados da biblioteca
+e do lote; URLs são normalizadas com `canonical_video_url`. Nenhuma etiqueta é
+reescrita e URL não é obrigatória para extrações da v1.
+
+Cada arquivo é copiado em blocos de 1 MiB para staging dentro da raiz gerenciada
+(mesma unidade), validado pelo MetadataReader e só então publicado e registrado.
+O contexto do staging limpa temporários em sucesso, erro ou cancelamento; falha de
+registro ou cancelamento após publicação descarta o destino. Faixas concluídas
+permanecem após cancelar. Varredura, cópia e hash têm checkpoints canceláveis.
+Arquivo candidato corrompido é erro por item. Arquivo existente ausente não possui
+hash, mas sua URL continua no índice; outros erros de leitura do índice de hashes
+encerram o lote antes de copiar, para não aceitar duplicatas sem verificação.
+
+`ImportDialog` permite acumular várias pastas, executa o caso de uso em `QThread`
+e recebe progresso por sinais. Só libera a thread após `finished` e `wait()`.
+Cancelar/fechar durante o trabalho solicita cancelamento sem destruir o worker.
+O bootstrap atualiza Songs inclusive após cancelamento parcial e acompanha os
+diálogos no shutdown. A janela aguarda importação e mudança de pasta antes de
+liberar serviços; a extração também verifica trabalho externo, além da modalidade
+dos diálogos impedir operações concorrentes pela interface.
+
 O ytDown deixa de ser só um extrator e passa a ser um player com bibliotecas, no estilo do Windows Media Player do Windows 7. A diferença: a biblioteca **não lê as músicas do computador**. Ela contém apenas os áudios extraídos pelo ytDown.
 
 As tarefas estão no Jira, no projeto [JOW](https://jonribeiro23.atlassian.net/jira/software/projects/JOW/boards/35). Cada épico corresponde a uma seção deste documento.

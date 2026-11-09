@@ -154,6 +154,7 @@ class ExtractPage(QWidget):
         self._cancel = threading.Event()
         self._thread: ExtractionThread | None = None
         self._working = False
+        self.external_busy = lambda: False
         self._batch_size = 0
         self._running_format = AUDIO_FORMATS[0]
         self.saved_files: list[Path] = []
@@ -400,7 +401,7 @@ class ExtractPage(QWidget):
         return self._working
 
     def start(self) -> None:
-        if self.is_working():
+        if self.is_working() or self.external_busy():
             return
         urls, invalid_lines = parse_url_list(self.urls.toPlainText())
         problem = texts.url_problem(urls, invalid_lines)

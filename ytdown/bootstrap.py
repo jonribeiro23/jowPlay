@@ -113,6 +113,10 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.pages import PageId, PlaceholderPage
     from ytdown.presentation.qt.songs_page import SongsPage
 
+    from ytdown.application.importing import ImportAudios
+    from ytdown.infrastructure.import_files import FileSystemImportFiles
+    from ytdown.presentation.qt.import_dialog import ImportDialog
+
     pages = {}
 
     def page_factory(page: PageId):
@@ -129,10 +133,32 @@ def build_main_window(library, playback, extract_batch, sharing):
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
 
+    window.background_dialogs = []
+    def importing():
+        return any(d.is_working() for d in window.background_dialogs)
+
+    pages[PageId.EXTRACT].external_busy = importing
+
+    def open_import():
+        if pages[PageId.EXTRACT].is_working() or importing():
+            return
+        dialog = ImportDialog(ImportAudios(library.storage, library.tracks, MutagenMetadataReader(),
+                              FileSystemImportFiles()), pages[PageId.EXTRACT].is_working, window)
+        window.background_dialogs.append(dialog)
+        dialog.import_finished.connect(pages[PageId.SONGS].refresh)
+        dialog.finished.connect(lambda: window.background_dialogs.remove(dialog))
+        dialog.open()
+
+    window.import_requested.connect(open_import)
+
     def open_options() -> None:
+        if importing():
+            return
         extract_page = pages[PageId.EXTRACT]
-        dialog = OptionsDialog(lambda: library.register.folder, library.change_folder, extract_page.is_working,
+        dialog = OptionsDialog(lambda: library.register.folder, library.change_folder, lambda: extract_page.is_working() or importing(),
                                window)
+        window.background_dialogs.append(dialog)
+        dialog.finished.connect(lambda: window.background_dialogs.remove(dialog))
         dialog.finished.connect(extract_page.refresh_library_folder)
         dialog.open()
 

@@ -34,6 +34,7 @@ PageFactory = Callable[[PageId], QWidget]
 
 
 class MainWindow(QMainWindow):
+    import_requested = Signal()
     options_requested = Signal()
     closing = Signal()
 
@@ -73,6 +74,11 @@ class MainWindow(QMainWindow):
         side.setContentsMargins(0, 0, 0, theme.PANE_MARGIN)
         side.setSpacing(0)
         side.addWidget(self.navigation, stretch=1)
+        self.import_button = QToolButton()
+        self.import_button.setText("Importar áudios extraídos...")
+        self.import_button.setToolTip("Importar áudios extraídos...")
+        self.import_button.clicked.connect(self.import_requested)
+        side.addWidget(self.import_button)
         side.addWidget(self.options_button)
 
         self.splitter = QSplitter()
@@ -119,7 +125,7 @@ class MainWindow(QMainWindow):
         return area
 
     def _pages(self) -> list[QWidget]:
-        return list(self._page_widgets.values())
+        return list(self._page_widgets.values()) + getattr(self, "background_dialogs", [])
 
     def show_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])

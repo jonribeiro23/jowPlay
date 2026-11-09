@@ -59,6 +59,8 @@ class RelocationThread(QThread):
 
 
 class OptionsDialog(QDialog):
+    relocation_finished = Signal()
+
     """`is_busy` diz se uma extração está em andamento: com ela, a pasta não pode mudar."""
 
     def __init__(
@@ -168,6 +170,16 @@ class OptionsDialog(QDialog):
         self._thread = None
         self._set_moving(False)
         self._refresh()
+        self.relocation_finished.emit()
+
+    def is_working(self):
+        return self.is_moving()
+
+    def shutdown(self, on_done):
+        if not self.is_moving():
+            return True
+        self.relocation_finished.connect(on_done, Qt.ConnectionType.SingleShotConnection)
+        return False
 
     def _set_moving(self, moving: bool) -> None:
         self.change_button.setEnabled(not moving)

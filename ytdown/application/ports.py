@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, ContextManager
 
 from ytdown.domain.library import AlbumSummary, ArtistSummary, GenreSummary, Track, TrackQuery
 from ytdown.domain.models import AudioFileInfo, AudioFormat, AudioTags, Progress
@@ -240,3 +240,15 @@ class ShareServer(Protocol):
     def share(self, path: Path) -> None: ...
 
     def statuses(self) -> list[tuple[str, TransferStatus]]: ...
+
+
+class ImportFiles(Protocol):
+    """I/O cancelável da importação. tick informa atividade, inclusive por bloco."""
+
+    def scan(self, folders: Iterable[Path], excluded: Path, cancel: threading.Event,
+             tick: Callable[[], None]) -> tuple[list[Path], list[str]]: ...
+
+    def fingerprint(self, path: Path, cancel: threading.Event, tick: Callable[[], None]) -> str: ...
+
+    def staged(self, source: Path, root: Path, cancel: threading.Event, tick: Callable[[], None]) -> ContextManager[Path]:
+        """Context manager: cópia completa temporária; sempre limpa ao sair."""

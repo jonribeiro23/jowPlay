@@ -1,5 +1,21 @@
 # ytDown
 
+### Importar extrações anteriores à 2.0
+
+Use **Importar áudios extraídos...** na barra lateral. Adicione uma ou mais pastas
+com extrações antigas e clique em **Importar**. O app procura MP3, M4A, FLAC e WAV
+também nas subpastas e copia os arquivos para a biblioteca gerenciada, preservando
+os originais, etiquetas e capas. Não há busca automática pela coleção do computador.
+Arquivos antigos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
+
+Duplicatas são ignoradas pela URL canônica de origem ou pelo SHA-256 dos bytes,
+contra a biblioteca e o próprio lote. A pasta gerenciada, links e junções não são
+percorridos. Ao cancelar, as faixas já importadas permanecem e a cópia em andamento
+é descartada. O resumo mostra importadas, duplicadas e erros, com detalhes roláveis.
+Se um arquivo existente não puder ser lido para verificar duplicatas, a importação
+encerra antes de copiar; arquivos ausentes ainda são comparados por URL.
+Extração, importação e mudança da pasta não podem ocorrer simultaneamente.
+
 Aplicativo para Windows 10 e 11 que extrai o áudio de um vídeo do YouTube e o salva no computador.
 
 ## Como usar

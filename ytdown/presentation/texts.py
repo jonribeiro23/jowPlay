@@ -185,7 +185,7 @@ OPTIONS_TITLE = "Opções"
 LIBRARY_FOLDER_LABEL = "Pasta da biblioteca"
 LIBRARY_FOLDER_HINT = ("Todo áudio extraído é guardado aqui, em Artista\\Álbum. "
                        "Ao mudar a pasta, os áudios que já estão na biblioteca vão junto.")
-WAIT_FOR_EXTRACTION = Message("Espere a extração terminar para mudar a pasta da biblioteca.", Tone.ERROR)
+WAIT_FOR_EXTRACTION = Message("Espere a extração ou importação terminar para mudar a pasta da biblioteca.", Tone.ERROR)
 
 
 def moving_library(done: int, total: int) -> str:
