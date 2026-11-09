@@ -34,6 +34,12 @@ class PlaybackListener(Protocol):
         """A faixa não pôde ser tocada (ex.: o arquivo sumiu) e foi pulada."""
 
 
+class PlaybackSettingsListener(Protocol):
+    """Extensão opcional: listeners antigos não precisam implementar este aviso."""
+
+    def on_settings_changed(self) -> None: ...
+
+
 class Playback:
     def __init__(self, player: AudioPlayer, storage: LibraryStorage, rng: random.Random | None = None,
                  tracks: TrackRepository | None = None) -> None:
@@ -51,6 +57,10 @@ class Playback:
 
     def add_listener(self, listener: PlaybackListener) -> None:
         self._listeners.append(listener)
+
+    def remove_listener(self, listener: PlaybackListener) -> None:
+        if listener in self._listeners:
+            self._listeners.remove(listener)
 
     # --- consulta
 
@@ -147,16 +157,26 @@ class Playback:
 
     def set_volume(self, volume: int) -> None:
         self._player.set_volume(volume)
+        self._notify_settings()
 
     def set_muted(self, muted: bool) -> None:
         self._player.set_muted(muted)
+        self._notify_settings()
 
     def set_shuffle(self, on: bool) -> None:
         self._queue.shuffle = on
         self._notify_queue()
 
     def cycle_repeat(self) -> RepeatMode:
-        return self._queue.cycle_repeat()
+        mode = self._queue.cycle_repeat()
+        self._notify_settings()
+        return mode
+
+    def _notify_settings(self) -> None:
+        for listener in list(self._listeners):
+            callback = getattr(listener, "on_settings_changed", None)
+            if callback is not None:
+                callback()
 
     # --- editar a fila
 

@@ -133,6 +133,15 @@ def build_main_window(library, playback, extract_batch, sharing):
         return pages[page]
 
     window = MainWindow(page_factory)
+    from PySide6.QtGui import QPixmap
+
+    metadata = MutagenMetadataReader()
+    window.transport.bind(
+        playback,
+        read_cover=lambda track: metadata.read_cover(library.storage.absolute(track.rel_path)),
+        default_cover=QPixmap(str(asset("default_cover.jpg"))),
+    )
+    window.closing.connect(window.transport.shutdown)
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
 

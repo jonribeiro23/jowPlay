@@ -65,6 +65,27 @@ class PlaybackTestCase(unittest.TestCase):
 
 
 class PlayTests(PlaybackTestCase):
+    def test_optional_settings_notifications_and_listener_removal(self):
+        snapshots = []
+
+        class SettingsRecorder:
+            def on_settings_changed(inner):
+                snapshots.append((self.playback.volume, self.playback.muted, self.playback.repeat))
+
+        listener = SettingsRecorder()
+        self.playback.add_listener(listener)
+        # Recorder legado permanece registrado e não implementa o callback opcional.
+        self.playback.set_volume(200)
+        self.playback.set_muted(True)
+        self.playback.cycle_repeat()
+        self.assertEqual(snapshots, [(100, False, RepeatMode.OFF),
+                                     (100, True, RepeatMode.OFF),
+                                     (100, True, RepeatMode.ALL)])
+        self.playback.remove_listener(listener)
+        self.playback.remove_listener(listener)
+        self.playback.set_volume(-1)
+        self.assertEqual(len(snapshots), 3)
+
     def test_plays_the_list_from_the_chosen_track(self):
         self.playback.play_tracks(TRACKS, start=1)
         self.assert_playing(TRACKS[1])
