@@ -209,6 +209,8 @@ Arquivos que o PyInstaller inclui, mas o app não usa. O `scripts/build_windows.
 
 O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
 
+A árvore mostra contagens dos repositórios de faixas e resumos de artistas, álbuns e gêneros. A atualização do modelo de músicas também atualiza essas contagens após extração, importação, verificação e remoção. O histórico da janela alimenta as setas e o breadcrumb; `navigation.last_page` compartilha o mesmo `Settings` e valores inválidos retornam a Músicas. Playlists permanece uma página reservada, pois ainda não há repositório implementado.
+
 ## Integridade da biblioteca (JOW-27)
 
 `CheckLibrary` roda numa `QThread` depois que a janela abre e sincroniza o campo `Track.missing` com os arquivos da pasta gerenciada. A raiz inteira indisponível não prova que todas as faixas foram apagadas: a checagem não escreve no índice e a interface mostra um único aviso. Erros pontuais de acesso também preservam o último estado da faixa. `RemoveUnavailableTracks` confirma novamente a ausência antes de remover apenas o registro; as cópias da faixa que estavam na fila de reprodução são purgadas pelo ID.

@@ -132,7 +132,9 @@ def build_main_window(library, playback, extract_batch, sharing):
             pages[page] = PlaceholderPage(page)
         return pages[page]
 
-    window = MainWindow(page_factory)
+    window = MainWindow(page_factory, settings=library.settings)
+    window.navigation.set_counts(library.tracks)
+    pages[PageId.SONGS].model.modelReset.connect(lambda: window.navigation.set_counts(library.tracks))
     window.play_queue.bind(playback)
     window.closing.connect(window.play_queue.shutdown)
     from PySide6.QtGui import QPixmap

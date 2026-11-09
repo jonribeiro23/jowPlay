@@ -1,6 +1,8 @@
 """Janela principal em Qt, testada em modo offscreen."""
 
 import unittest
+import tempfile
+from pathlib import Path
 
 from tests.qt_support import dispose, pause, qt_app
 from PySide6.QtCore import QPoint, Qt
@@ -10,6 +12,7 @@ from PySide6.QtWidgets import QLabel
 from ytdown.presentation.qt.main_window import FIRST_PAGE, MINIMUM_SIZE, MainWindow
 from ytdown.presentation.qt.navigation import LIBRARY_LABEL
 from ytdown.presentation.qt.pages import PageId
+from ytdown.infrastructure.json_settings import JsonSettings
 
 
 class MainWindowTests(unittest.TestCase):
@@ -65,6 +68,40 @@ class MainWindowTests(unittest.TestCase):
     def test_show_page_also_selects_it_in_the_tree(self):
         self.window.show_page(PageId.EXTRACT)
         self.assertEqual(self.window.navigation.current_page(), PageId.EXTRACT)
+
+    def test_history_breadcrumb_and_branch(self):
+        self.assertFalse(self.window.back_button.isEnabled())
+        self.click_navigation(PageId.ARTISTS)
+        self.click_navigation(PageId.EXTRACT)
+        self.assertEqual(self.window.breadcrumb.text(), "Extrair")
+        self.window.back_button.click()
+        self.assertEqual(self.window.current_page(), PageId.ARTISTS)
+        self.assertEqual(self.window.breadcrumb.text(), "Biblioteca › Artistas")
+        self.window.forward_button.click()
+        self.assertEqual(self.window.navigation.current_page(), PageId.EXTRACT)
+        self.window.back_button.click()
+        self.click_navigation(PageId.ALBUMS)
+        self.assertFalse(self.window.forward_button.isEnabled())
+        self.window.back_button.click()
+        self.assertEqual(self.window.current_page(), PageId.ARTISTS)
+
+    def test_last_page_is_restored_and_invalid_value_falls_back(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            settings = JsonSettings(path)
+            settings.set("other", 42)
+            first = MainWindow(settings=settings)
+            first.show_page(PageId.GENRES)
+            dispose(first)
+            second = MainWindow(settings=JsonSettings(path))
+            self.assertEqual(second.current_page(), PageId.GENRES)
+            self.assertEqual(second.settings.get("other"), 42)
+            dispose(second)
+            settings = JsonSettings(path)
+            settings.set("navigation.last_page", "removed")
+            third = MainWindow(settings=settings)
+            self.assertEqual(third.current_page(), FIRST_PAGE)
+            dispose(third)
 
     def test_play_queue_pane_can_be_hidden_and_shown(self):
         toggle = self.window.transport.queue_toggle

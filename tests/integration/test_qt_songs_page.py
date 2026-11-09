@@ -158,6 +158,11 @@ class SongsTests(unittest.TestCase):
         extract.start()
         self.assertTrue(wait_until(lambda: not extract.is_working()))
         self.assertEqual(page.model.rowCount(), 5001)
+        for kind, expected in ((PageId.SONGS, len(library.tracks.list_tracks())),
+                               (PageId.ARTISTS, len(library.tracks.artists())),
+                               (PageId.ALBUMS, len(library.tracks.albums())),
+                               (PageId.GENRES, len(library.tracks.genres()))):
+            self.assertEqual(window.navigation._items[kind].text(1), str(expected))
         self.assertEqual(len(extract.saved_files), 1)
         self.assertTrue(extract.saved_files[0].is_file())
         # Carrega um arquivo real sem precisar tocar som, e fecha pela janela.

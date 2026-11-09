@@ -1,5 +1,7 @@
 # ytDown
 
+A navegação reúne Músicas, Artistas, Álbuns e Gêneros em Biblioteca, com contagens atualizadas após alterações; Playlists e Extrair ficam na raiz. As setas acima do conteúdo percorrem o histórico e o caminho indica a seção atual. A última seção é restaurada ao abrir o aplicativo. As páginas ainda não implementadas permanecem reservadas para versões futuras.
+
 ### Importar extrações anteriores à 2.0
 
 Use **Importar áudios extraídos...** na barra lateral. Adicione uma ou mais pastas

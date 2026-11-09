@@ -30,6 +30,7 @@ class NavigationPane(QTreeWidget):
         super().__init__()
         self.setObjectName("navigation")
         self.setHeaderHidden(True)
+        self.setColumnCount(2)
         self.setRootIsDecorated(True)
         self.setMinimumWidth(160)
         size = theme.METRICS["nav_icon_size"]
@@ -59,6 +60,17 @@ class NavigationPane(QTreeWidget):
     def current_page(self) -> PageId | None:
         item = self.currentItem()
         return item.data(0, _PAGE_ROLE) if item else None
+
+    def set_counts(self, tracks) -> None:
+        counts = {
+            PageId.SONGS: len(tracks.list_tracks()),
+            PageId.ARTISTS: len(tracks.artists()),
+            PageId.ALBUMS: len(tracks.albums()),
+            PageId.GENRES: len(tracks.genres()),
+        }
+        for page, count in counts.items():
+            self._items[page].setText(1, str(count))
+        self.resizeColumnToContents(0)
 
     def _on_current_item_changed(self, current: QTreeWidgetItem | None, _previous) -> None:
         page = current.data(0, _PAGE_ROLE) if current else None

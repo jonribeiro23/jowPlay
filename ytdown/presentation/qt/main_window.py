@@ -8,6 +8,8 @@ from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
+    QHBoxLayout,
+    QLabel,
     QMainWindow,
     QScrollArea,
     QSplitter,
@@ -29,6 +31,7 @@ MINIMUM_SIZE = (900, 560)
 DEFAULT_SIZE = (1200, 760)
 SPLITTER_SIZES = (200, 760, 240)  # Navegação, conteúdo, lista de reprodução.
 FIRST_PAGE = PageId.SONGS
+LAST_PAGE_KEY = "navigation.last_page"
 
 PageFactory = Callable[[PageId], QWidget]
 
@@ -38,12 +41,15 @@ class MainWindow(QMainWindow):
     options_requested = Signal()
     closing = Signal()
 
-    def __init__(self, page_factory: PageFactory = PlaceholderPage) -> None:
+    def __init__(self, page_factory: PageFactory = PlaceholderPage, settings=None) -> None:
         super().__init__()
         self.setObjectName("mainWindow")
         self.setWindowTitle(APP_TITLE)
         self.setMinimumSize(*MINIMUM_SIZE)
         self.resize(*DEFAULT_SIZE)
+        self.settings = settings
+        self._history: list[PageId] = []
+        self._history_index = -1
 
         self.navigation = NavigationPane()
         self.options_button = QToolButton()
@@ -81,10 +87,30 @@ class MainWindow(QMainWindow):
         side.addWidget(self.import_button)
         side.addWidget(self.options_button)
 
+        self.content = QWidget()
+        content_layout = QVBoxLayout(self.content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        header = QHBoxLayout()
+        self.back_button = QToolButton()
+        self.back_button.setText("←")
+        self.back_button.setToolTip("Voltar")
+        self.forward_button = QToolButton()
+        self.forward_button.setText("→")
+        self.forward_button.setToolTip("Avançar")
+        self.breadcrumb = QLabel()
+        self.breadcrumb.setObjectName("breadcrumb")
+        header.addWidget(self.back_button)
+        header.addWidget(self.forward_button)
+        header.addWidget(self.breadcrumb, 1)
+        content_layout.addLayout(header)
+        content_layout.addWidget(self.pages, 1)
+        self.back_button.clicked.connect(lambda: self._move_history(-1))
+        self.forward_button.clicked.connect(lambda: self._move_history(1))
+
         self.splitter = QSplitter()
         self.splitter.setObjectName("mainSplitter")
         self.splitter.setChildrenCollapsible(False)
-        for widget in (self.side_pane, self.pages, self.play_queue):
+        for widget in (self.side_pane, self.content, self.play_queue):
             self.splitter.addWidget(widget)
         self.splitter.setStretchFactor(1, 1)  # Ao redimensionar, só o conteúdo cresce.
         self.splitter.setSizes(list(SPLITTER_SIZES))
@@ -100,7 +126,12 @@ class MainWindow(QMainWindow):
         self.navigation.page_selected.connect(self.show_page)
         self.transport.queue_pane_toggled.connect(self.play_queue.setVisible)
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.transport.queue_toggle.toggle)
-        self.navigation.select(FIRST_PAGE)
+        saved = settings.get(LAST_PAGE_KEY) if settings is not None else None
+        try:
+            initial = PageId[saved] if isinstance(saved, str) else FIRST_PAGE
+        except KeyError:
+            initial = FIRST_PAGE
+        self.show_page(initial)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Páginas com trabalho em andamento (ex.: extração) terminam antes de a janela fechar:
@@ -129,9 +160,32 @@ class MainWindow(QMainWindow):
                 + getattr(self, "background_jobs", []))
 
     def show_page(self, page: PageId) -> None:
+        if self._history_index < 0 or self._history[self._history_index] != page:
+            del self._history[self._history_index + 1:]
+            self._history.append(page)
+            self._history_index += 1
+        self._display_page(page)
+
+    def _display_page(self, page: PageId) -> None:
         self.pages.setCurrentIndex(self._page_index[page])
         if self.navigation.current_page() != page:
-            self.navigation.select(page)
+            self.navigation.blockSignals(True)
+            try:
+                self.navigation.select(page)
+            finally:
+                self.navigation.blockSignals(False)
+        prefix = "Biblioteca › " if page in (PageId.SONGS, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES) else ""
+        self.breadcrumb.setText(prefix + page.title)
+        self.back_button.setEnabled(self._history_index > 0)
+        self.forward_button.setEnabled(self._history_index < len(self._history) - 1)
+        if self.settings is not None:
+            self.settings.set(LAST_PAGE_KEY, page.name)
+
+    def _move_history(self, offset: int) -> None:
+        target = self._history_index + offset
+        if 0 <= target < len(self._history):
+            self._history_index = target
+            self._display_page(self._history[target])
 
     def current_page(self) -> PageId:
         index = self.pages.currentIndex()

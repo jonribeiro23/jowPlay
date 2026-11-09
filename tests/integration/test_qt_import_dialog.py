@@ -101,6 +101,7 @@ class ImportCompositionTests(unittest.TestCase):
         self.addCleanup(dispose, window)
         window.show()
         self.assertEqual(window.import_button.text(), 'Importar \u00e1udios extra\u00eddos...')
+        self.assertEqual(window.navigation._items[PageId.SONGS].text(1), '0')
         window.import_requested.emit()
         dialog = window.background_dialogs[0]
         dialog.folders.addItem(str(self.source))
@@ -110,4 +111,6 @@ class ImportCompositionTests(unittest.TestCase):
         self.assertEqual(len(window.background_dialogs), 1)
         self.assertTrue(wait_until(lambda: not dialog.is_working()))
         self.assertEqual(window.page(PageId.SONGS).model.rowCount(), 1)
+        for page in (PageId.SONGS, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES):
+            self.assertEqual(window.navigation._items[page].text(1), '1')
         dialog.reject()
