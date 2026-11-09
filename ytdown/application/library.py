@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from threading import Event
 
-from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository
+from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository, ThumbnailCache
 from ytdown.domain.errors import ExtractionError, LibraryError, UnreadableAudio
 from ytdown.domain.library import UNKNOWN_GENRE, DuplicatePolicy, Track
 from ytdown.domain.library_paths import library_path
@@ -149,11 +149,13 @@ class RegisterExtractedTrack:
         tracks: TrackRepository,
         reader: MetadataReader,
         clock: Callable[[], datetime] = datetime.now,
+        thumbnails: ThumbnailCache | None = None,
     ) -> None:
         self._storage = storage
         self._tracks = tracks
         self._reader = reader
         self._clock = clock
+        self._thumbnails = thumbnails
 
     @property
     def folder(self) -> Path:
@@ -205,6 +207,8 @@ class RegisterExtractedTrack:
 
         if existing:
             track = self._retire_old_file(existing, track, wanted)
+        if self._thumbnails:
+            self._thumbnails.request(self._storage.absolute(track.rel_path))
         return track
 
     def _duration_ms(self, file: Path) -> int:

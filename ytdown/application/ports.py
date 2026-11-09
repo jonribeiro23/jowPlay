@@ -62,6 +62,19 @@ class MetadataReader(Protocol):
         """
 
 
+class ThumbnailCache(Protocol):
+    """Miniaturas derivadas: agendamento n?o bloqueia a interface."""
+
+    def request(self, audio: Path) -> None:
+        """Agenda gera??o ap?s registrar ou alterar a capa de um ?udio."""
+
+    def get_or_create(self, audio: Path) -> Path | None:
+        """Obt?m ou gera a miniatura; chamar fora da thread da interface."""
+
+    def cleanup(self, audios: Iterable[Path]) -> int:
+        """Remove ?rf?s ap?s examinar todos os ?udios; executar em segundo plano."""
+
+
 class LibraryStorage(Protocol):
     """Os arquivos da pasta da biblioteca. Caminhos relativos usam "/" como separador.
 

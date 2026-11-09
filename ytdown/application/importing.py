@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Event
 
-from ytdown.application.ports import ImportFiles, LibraryStorage, MetadataReader, TrackRepository
+from ytdown.application.ports import ImportFiles, LibraryStorage, MetadataReader, TrackRepository, ThumbnailCache
 from ytdown.domain.errors import ExtractionCancelled
 from ytdown.domain.library import Track
 from ytdown.domain.library_paths import library_path
@@ -20,8 +20,9 @@ class ImportResult:
 
 class ImportAudios:
     def __init__(self, storage: LibraryStorage, tracks: TrackRepository,
-                 reader: MetadataReader, files: ImportFiles):
+                 reader: MetadataReader, files: ImportFiles, thumbnails: ThumbnailCache | None = None):
         self.storage, self.tracks, self.reader, self.files = storage, tracks, reader, files
+        self.thumbnails = thumbnails
 
     def __call__(self, folders, cancel=None, on_progress=lambda phase, done, total: None):
         cancel = cancel if cancel is not None else Event()
@@ -80,6 +81,8 @@ class ImportAudios:
                                         f'{source}: {original or type(original).__name__}; '
                                         f'falha ao limpar destino residual {self.storage.absolute(placed)}: {cleanup}')
                                 raise
+                            if self.thumbnails:
+                                self.thumbnails.request(self.storage.absolute(placed))
                             result.imported += 1
                             hashes.add(digest)
                             if url:

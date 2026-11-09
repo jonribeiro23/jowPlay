@@ -17,6 +17,7 @@ from ytdown.infrastructure.covers import PillowCoverLoader
 from ytdown.infrastructure.json_settings import JsonSettings, default_settings_path
 from ytdown.infrastructure.library_storage import FileSystemLibraryStorage
 from ytdown.infrastructure.metadata_reader import MutagenMetadataReader
+from ytdown.infrastructure.thumbnails import FileThumbnailCache
 from ytdown.infrastructure.resources import asset
 from ytdown.infrastructure.sharing.device_store import JsonDeviceStore, default_store_path
 from ytdown.infrastructure.sharing.server import LocalShareServer
@@ -42,8 +43,10 @@ class Library:
     tracks: SqliteTrackRepository
     settings: Settings
     storage: LibraryStorage
+    thumbnails: FileThumbnailCache
 
     def close(self) -> None:
+        self.thumbnails.close()
         self.tracks.close()
 
 
@@ -53,12 +56,14 @@ def build_library(db_path: Path | None = None, settings_path: Path | None = None
     settings = JsonSettings(settings_path or default_settings_path())
     storage = FileSystemLibraryStorage(library_folder(settings, default_folder or music_folder() / LIBRARY_FOLDER_NAME))
     tracks = SqliteTrackRepository(db_path or default_library_db_path())
+    thumbnails = FileThumbnailCache(MutagenMetadataReader())
     return Library(
-        register=RegisterExtractedTrack(storage, tracks, MutagenMetadataReader()),
+        register=RegisterExtractedTrack(storage, tracks, MutagenMetadataReader(), thumbnails=thumbnails),
         change_folder=ChangeLibraryFolder(storage, tracks, settings),
         tracks=tracks,
         settings=settings,
         storage=storage,
+        thumbnails=thumbnails,
     )
 
 
@@ -139,10 +144,10 @@ def build_main_window(library, playback, extract_batch, sharing):
     window.closing.connect(window.play_queue.shutdown)
     from PySide6.QtGui import QPixmap
 
-    metadata = MutagenMetadataReader()
     window.transport.bind(
         playback,
-        read_cover=lambda track: metadata.read_cover(library.storage.absolute(track.rel_path)),
+        read_cover=lambda track: (path.read_bytes() if (path := library.thumbnails.get_or_create(
+            library.storage.absolute(track.rel_path))) else None),
         default_cover=QPixmap(str(asset("default_cover.jpg"))),
     )
     window.closing.connect(window.transport.shutdown)
@@ -160,7 +165,7 @@ def build_main_window(library, playback, extract_batch, sharing):
         if pages[PageId.EXTRACT].is_working() or importing() or checking():
             return
         dialog = ImportDialog(ImportAudios(library.storage, library.tracks, MutagenMetadataReader(),
-                              FileSystemImportFiles()), pages[PageId.EXTRACT].is_working, window)
+                              FileSystemImportFiles(), library.thumbnails), pages[PageId.EXTRACT].is_working, window)
         window.background_dialogs.append(dialog)
         dialog.import_finished.connect(pages[PageId.SONGS].refresh)
         dialog.finished.connect(lambda: window.background_dialogs.remove(dialog))
