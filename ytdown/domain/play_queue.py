@@ -59,6 +59,11 @@ class PlayQueue(Generic[T]):
         return [entry.item for entry in self._entries]
 
     @property
+    def entry_keys(self) -> list[object]:
+        """Identidades opacas das entradas, na ordem da lista, inclusive duplicatas."""
+        return list(self._entries)
+
+    @property
     def current(self) -> T | None:
         """O item que está tocando (ou pausado); None se nada foi escolhido ou a fila acabou."""
         return self._current.item if self._current else None

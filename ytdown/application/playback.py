@@ -79,6 +79,11 @@ class Playback:
     def queue(self) -> list[Track]:
         return self._queue.items
 
+    @property
+    def queue_entry_keys(self) -> list[object]:
+        """Identidades estáveis enquanto as entradas permanecerem na fila."""
+        return self._queue.entry_keys
+
     def upcoming(self) -> list[Track]:
         return self._queue.upcoming()
 

@@ -133,6 +133,8 @@ def build_main_window(library, playback, extract_batch, sharing):
         return pages[page]
 
     window = MainWindow(page_factory)
+    window.play_queue.bind(playback)
+    window.closing.connect(window.play_queue.shutdown)
     from PySide6.QtGui import QPixmap
 
     metadata = MutagenMetadataReader()

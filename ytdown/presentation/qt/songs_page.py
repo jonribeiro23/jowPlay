@@ -1,6 +1,6 @@
 """Lista virtualizada da biblioteca, com ordenação delegada ao repositório."""
-from PySide6.QtCore import QAbstractTableModel, QByteArray, QModelIndex, Qt
-from PySide6.QtGui import QPalette
+from PySide6.QtCore import QAbstractTableModel, QByteArray, QMimeData, QModelIndex, Qt
+from PySide6.QtGui import QDrag, QPalette
 from PySide6.QtWidgets import QAbstractItemView, QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QTableView, QVBoxLayout, QWidget
 
 from ytdown.application.ports import Settings, TrackRepository
@@ -16,6 +16,18 @@ COLUMNS = (
     ("Reproduções", SortField.PLAY_COUNT),
 )
 HEADER_KEY = "songs.header"
+TRACKS_MIME = "application/x-ytdown-tracks"
+
+
+class SongsTable(QTableView):
+    def startDrag(self, supported_actions):
+        if not self.selectionModel().selectedRows():
+            return
+        mime = QMimeData()
+        mime.setData(TRACKS_MIME, QByteArray(b"tracks"))
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.exec(Qt.DropAction.CopyAction)
 
 
 class TrackTableModel(QAbstractTableModel):
@@ -87,11 +99,12 @@ class SongsPage(QWidget):
         self.remove_unavailable_button.clicked.connect(self.remove_unavailable)
         heading.addWidget(self.remove_unavailable_button)
         layout.addLayout(heading)
-        self.table = QTableView()
+        self.table = SongsTable()
         self.model = TrackTableModel(repository, self)
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table.setDragEnabled(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().hide()
         header = self.table.horizontalHeader()
