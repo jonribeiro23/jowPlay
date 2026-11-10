@@ -10,7 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from mutagen.flac import FLAC
-from mutagen.id3 import ID3
+from mutagen.id3 import APIC, ID3
 from mutagen.mp4 import MP4
 from mutagen.wave import WAVE
 
@@ -119,6 +119,47 @@ class MutagenTagWriterTests(unittest.TestCase):
                 self.writer.write(path, self.full)
                 self.writer.write(path, cleared)
                 self.assert_tags(path, cleared)
+
+    def test_selective_update_preserves_other_fields_and_source(self):
+        for extension in FORMATS:
+            with self.subTest(extension=extension):
+                path = self.make_audio(extension)
+                self.writer.write(path, self.full)
+                self.writer.update(path, {"artist": "Outro", "year": None})
+                self.assert_tags(path, replace(self.full, artist="Outro", year=None))
+
+    def test_selective_cover_removal_preserves_source(self):
+        for extension in FORMATS:
+            with self.subTest(extension=extension):
+                path = self.make_audio(extension)
+                self.writer.write(path, self.full)
+                self.writer.update(path, {"cover": None})
+                if extension == "mp3":
+                    tags = ID3(path)
+                    self.assertFalse(tags.getall("APIC"))
+                    self.assertEqual(tags.getall("WOAS")[0].url, self.full.source_url)
+                elif extension == "wav":
+                    tags = WAVE(path).tags
+                    self.assertFalse(tags.getall("APIC"))
+                    self.assertEqual(tags.getall("WOAS")[0].url, self.full.source_url)
+                elif extension == "m4a":
+                    tags = MP4(path).tags
+                    self.assertNotIn("covr", tags)
+                    self.assertEqual(bytes(tags[MP4_SOURCE_KEY][0]).decode(), self.full.source_url)
+                else:
+                    audio = FLAC(path)
+                    self.assertFalse(audio.pictures)
+                    self.assertEqual(audio[VORBIS_SOURCE_KEY][0], self.full.source_url)
+
+    def test_selective_cover_replacement_keeps_other_id3_pictures(self):
+        path = self.make_audio("mp3")
+        self.writer.write(path, self.full)
+        tags = ID3(path)
+        tags.add(APIC(encoding=3, mime="image/jpeg", type=4, desc="Cover_", data=b"back"))
+        tags.save(path, v2_version=3)
+        self.writer.update(path, {"cover": self.full.cover})
+        pictures = ID3(path).getall("APIC")
+        self.assertEqual({int(p.type): p.data for p in pictures}, {3: self.full.cover, 4: b"back"})
 
     def test_rewriting_does_not_duplicate_tags(self):
         for extension in ("mp3", "wav"):

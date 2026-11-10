@@ -137,3 +137,89 @@ class MutagenTagWriter:
             writer(path, tags)
         except (MutagenError, OSError) as exc:
             raise ExtractionError(f"Não foi possível gravar os metadados: {exc}") from exc
+
+    def update(self, path: Path, changes: dict) -> None:
+        """Altera somente os campos informados; capa None remove a capa frontal.
+
+        O chamador deve trabalhar em uma cópia: esta operação não é transacional.
+        """
+        fields = {"title", "artist", "album", "genre", "year", "track_no", "cover"}
+        if changes.keys() - fields:
+            raise ValueError("Campo de etiqueta não suportado")
+        if not changes:
+            return
+        try:
+            suffix = path.suffix.lower()
+            if suffix in (".mp3", ".wav"):
+                audio = WAVE(path) if suffix == ".wav" else None
+                if audio is not None:
+                    if audio.tags is None:
+                        audio.add_tags()
+                    tags = audio.tags
+                else:
+                    try:
+                        tags = ID3(path)
+                    except ID3NoHeaderError:
+                        tags = ID3()
+                frames = {"title": TIT2, "artist": TPE1, "album": TALB,
+                          "genre": TCON, "year": TDRC, "track_no": TRCK}
+                for name, cls in frames.items():
+                    if name in changes:
+                        tags.delall(cls.__name__)
+                        if name == "year":
+                            tags.delall("TYER")
+                        if changes[name] is not None and changes[name] != "":
+                            tags.add(cls(encoding=3, text=str(changes[name])))
+                if "cover" in changes:
+                    for picture in list(tags.getall("APIC")):
+                        if picture.type == PICTURE_TYPE_FRONT_COVER:
+                            del tags[picture.HashKey]
+                    if changes["cover"]:
+                        descriptions = {picture.desc for picture in tags.getall("APIC")}
+                        description = "Cover"
+                        while description in descriptions:
+                            description += "_"
+                        tags.add(APIC(encoding=3, mime="image/jpeg", type=PICTURE_TYPE_FRONT_COVER,
+                                      desc=description, data=changes["cover"]))
+                version = 3 if tags.version[1] == 3 else 4
+                if version == 3:
+                    tags.update_to_v23()
+                if audio is not None:
+                    audio.save(v2_version=version)
+                else:
+                    tags.save(path, v2_version=version)
+            elif suffix == ".m4a":
+                audio = MP4(path)
+                if audio.tags is None:
+                    audio.add_tags()
+                keys = {"title": "\xa9nam", "artist": "\xa9ART", "album": "\xa9alb",
+                        "genre": "\xa9gen", "year": "\xa9day", "track_no": "trkn", "cover": "covr"}
+                for name, value in changes.items():
+                    if value is None or value == "" or (name == "cover" and not value):
+                        audio.tags.pop(keys[name], None)
+                    elif name == "cover":
+                        audio.tags[keys[name]] = [MP4Cover(value, imageformat=MP4Cover.FORMAT_JPEG)]
+                    elif name == "track_no":
+                        audio.tags[keys[name]] = [(value, 0)]
+                    else:
+                        audio.tags[keys[name]] = [str(value)]
+                audio.save()
+            elif suffix == ".flac":
+                audio = FLAC(path)
+                keys = {"title": "title", "artist": "artist", "album": "album", "genre": "genre",
+                        "year": "date", "track_no": "tracknumber"}
+                for name, value in changes.items():
+                    if name == "cover":
+                        other = [p for p in audio.pictures if p.type != PICTURE_TYPE_FRONT_COVER]
+                        audio.clear_pictures()
+                        for picture in other:
+                            audio.add_picture(picture)
+                        if value:
+                            audio.add_picture(_flac_picture(value))
+                    else:
+                        _set_or_remove(audio, keys[name], str(value) if value is not None else None)
+                audio.save()
+            else:
+                raise ExtractionError(f"O formato {path.suffix} não aceita edição de etiquetas.")
+        except (MutagenError, OSError) as exc:
+            raise ExtractionError(f"Não foi possível gravar os metadados: {exc}") from exc
