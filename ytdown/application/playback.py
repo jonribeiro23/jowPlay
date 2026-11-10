@@ -64,6 +64,7 @@ class Playback:
         self._sample_time = self._clock()
         self._sample_position = 0
         self._seeking = False
+        self._restoring = False
         player.set_listener(self)
 
     def add_listener(self, listener: PlaybackListener) -> None:
@@ -128,16 +129,65 @@ class Playback:
     def repeat(self) -> RepeatMode:
         return self._queue.repeat
 
+    def workspace_state(self) -> dict:
+        return {"volume": self.volume, "muted": self.muted, "shuffle": self.shuffle,
+                "repeat": self.repeat.name, "queue": [t.id for t in self.queue],
+                "current": self.current_index, "position": self.position_ms,
+                "order": self._queue.playback_order}
+
+    def restore_workspace(self, state, tracks: TrackRepository) -> None:
+        if not isinstance(state, dict):
+            return
+        volume = state.get("volume")
+        if type(volume) is int and 0 <= volume <= 100:
+            self.set_volume(volume)
+        muted = state.get("muted")
+        if type(muted) is bool:
+            self.set_muted(muted)
+        shuffle = state.get("shuffle") is True
+        repeat = RepeatMode.__members__.get(state.get("repeat"), RepeatMode.OFF) if isinstance(state.get("repeat"), str) else RepeatMode.OFF
+        ids = state.get("queue")
+        if not isinstance(ids, list):
+            ids = []
+        items, mapping = [], {}
+        for index, track_id in enumerate(ids):
+            track = tracks.get(track_id) if type(track_id) is int and 0 < track_id <= 9223372036854775807 else None
+            try:
+                available = track is not None and self._storage.exists(track.rel_path)
+            except (LibraryError, OSError, ValueError):
+                available = False
+            if available:
+                mapping[index] = len(items)
+                items.append(track)
+        current = state.get("current")
+        current = mapping.get(current) if type(current) is int else None
+        order = state.get("order")
+        if (isinstance(order, list) and all(type(i) is int for i in order)
+                and sorted(order) == list(range(len(ids)))):
+            order = [mapping[i] for i in order if i in mapping]
+        else:
+            order = None
+        self._queue.restore(items, current, shuffle, repeat, order)
+        self._notify_queue()
+        self._notify_settings()
+        self._restoring = current is not None
+        if current is not None and self._load(self._queue.current):
+            position = state.get("position")
+            if type(position) is int and 0 < position <= 2147483647:
+                self.seek(position)
+
     # --- tocar
 
     def play_tracks(self, tracks: Iterable[Track], start: int = 0) -> None:
         """Troca a fila pelas faixas dadas (ex.: a lista de músicas) e toca a partir de `start`."""
+        self._restoring = False
         self._queue.replace(tracks, start)
         self._failures = 0
         self._notify_queue()
         self._start(self._queue.current)
 
     def play_pause(self) -> None:
+        self._restoring = False
         if self._state is PlayerState.PLAYING:
             self._player.pause()
         elif self._state is PlayerState.PAUSED:
@@ -290,6 +340,8 @@ class Playback:
         if track is None:
             return
         self._notify(lambda listener: listener.on_track_unavailable(track, message))
+        if self._restoring:
+            return
         self._failures += 1
         if self._failures >= len(self._queue):
             # Nenhuma faixa da fila toca: parar, em vez de girar para sempre.
@@ -302,6 +354,7 @@ class Playback:
 
     def _start(self, track: Track | None) -> None:
         """Carrega e toca `track`; None significa fim da fila."""
+        self._restoring = False
         if self._load(track):
             self._player.play()
 

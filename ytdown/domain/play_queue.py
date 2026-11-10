@@ -73,6 +73,20 @@ class PlayQueue(Generic[T]):
         """Posição do item atual na lista."""
         return self._entries.index(self._current) if self._current else None
 
+    @property
+    def playback_order(self) -> list[int]:
+        return [self._entries.index(entry) for entry in self._order]
+
+    def restore(self, items: Iterable[T], current: int | None, shuffle: bool,
+                repeat: RepeatMode, order: list[int] | None = None) -> None:
+        self._entries = [_Entry(item) for item in items]
+        self._current = self._entries[current] if current is not None and 0 <= current < len(self._entries) else None
+        self._shuffle, self.repeat = shuffle, repeat
+        if shuffle and order is not None and sorted(order) == list(range(len(self._entries))):
+            self._order = [self._entries[index] for index in order]
+        else:
+            self._rebuild_order()
+
     def upcoming(self) -> list[T]:
         """O que ainda vai tocar, na ordem de reprodução (sem contar a volta do "repetir todas")."""
         start = self._order.index(self._current) + 1 if self._current else 0

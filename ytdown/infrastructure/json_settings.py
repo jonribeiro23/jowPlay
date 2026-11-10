@@ -35,7 +35,7 @@ class JsonSettings:
     def _load(self) -> dict:
         try:
             values = json.loads(self._path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError, UnicodeError):
             return {}
         return values if isinstance(values, dict) else {}
 

@@ -1,5 +1,17 @@
 # ytDown
 
+### Área de trabalho
+
+Ao fechar a janela, o ytDown guarda volume, mudo, aleatório, repetição, fila e posição,
+além da geometria, larguras dos painéis, página e preferências das colunas. Na próxima
+abertura a faixa é carregada sem iniciar a reprodução; pressione Play para continuar.
+Duplicatas e a ordem de reprodução do aleatório são preservadas. Faixas removidas do
+índice ou cujos arquivos estejam ausentes são omitidas da fila restaurada; se a faixa
+atual estiver indisponível, nenhuma faixa é iniciada automaticamente. Configurações
+inválidas são ignoradas, e as demais preferências permanecem no mesmo arquivo JSON.
+O salvamento acontece no fechamento normal da janela; uma interrupção abrupta pode
+perder as alterações da sessão.
+
 **Em reprodução** mostra capa, informações da faixa e próximas faixas. Abra pela árvore,
 pelo botão da barra inferior ou com duplo clique na miniatura. O botão **Modo compacto**
 abre uma janela sempre no topo com controles de reprodução; sua posição é lembrada.

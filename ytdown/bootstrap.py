@@ -184,6 +184,8 @@ def build_main_window(library, playback, extract_batch, sharing):
         read_cover=read_cover,
         default_cover=QPixmap(str(asset("default_cover.jpg"))),
     )
+    playback.restore_workspace(library.settings.get("workspace.playback"), library.tracks)
+    window.closing.connect(lambda: library.settings.set("workspace.playback", playback.workspace_state()))
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     pages[PageId.SONGS].model.modelReset.connect(pages[PageId.RECENT].refresh)
     last_ids = []

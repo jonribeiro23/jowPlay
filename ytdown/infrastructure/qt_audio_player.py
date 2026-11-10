@@ -61,6 +61,7 @@ class QtAudioPlayer:
         self._player.setAudioOutput(self._output)
         self._listener: PlayerListener = _Silent()
         self._path: Path | None = None
+        self._pending_seek: int | None = None
         self._volume = 0
         self.set_volume(volume)
 
@@ -77,6 +78,7 @@ class QtAudioPlayer:
 
     def load(self, path: Path) -> None:
         self._player.stop()
+        self._pending_seek = None
         self._path = path
         if not path.is_file():
             # Sem isso, o Qt continuaria com a faixa anterior carregada.
@@ -93,10 +95,16 @@ class QtAudioPlayer:
         self._player.pause()
 
     def stop(self) -> None:
+        self._pending_seek = None
         self._player.stop()
 
     def seek(self, position_ms: int) -> None:
-        self._player.setPosition(max(0, position_ms))
+        position_ms = max(0, position_ms)
+        if self._player.mediaStatus() in (QMediaPlayer.MediaStatus.LoadingMedia, QMediaPlayer.MediaStatus.NoMedia):
+            self._pending_seek = position_ms
+        else:
+            self._pending_seek = None
+            self._player.setPosition(position_ms)
 
     @property
     def state(self) -> PlayerState:
@@ -104,7 +112,7 @@ class QtAudioPlayer:
 
     @property
     def position_ms(self) -> int:
-        return self._player.position()
+        return self._pending_seek if self._pending_seek is not None else self._player.position()
 
     @property
     def duration_ms(self) -> int:
@@ -135,12 +143,16 @@ class QtAudioPlayer:
 
     def shutdown(self) -> None:
         """Para e solta o arquivo (ex.: ao fechar o app, para o Windows liberar o arquivo)."""
+        self._pending_seek = None
         self._player.stop()
         self._player.setSource(QUrl())
 
     # --- detalhes
 
     def _on_media_status(self, status: QMediaPlayer.MediaStatus) -> None:
+        if status in (QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferedMedia) and self._pending_seek is not None:
+            position, self._pending_seek = self._pending_seek, None
+            self._player.setPosition(position)
         if status is QMediaPlayer.MediaStatus.EndOfMedia:
             self._listener.on_finished()
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt, Signal, QTimer
-from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
+from PySide6.QtCore import QRect, QSize, Qt, Signal, QTimer
+from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -137,6 +137,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.transport)
         self.setCentralWidget(central)
 
+        if settings is not None:
+            geometry = settings.get("workspace.geometry")
+            if isinstance(geometry, list) and len(geometry) == 4 and all(type(x) is int for x in geometry):
+                x, y, w, h = geometry
+                if (900 <= w <= 10000 and 560 <= h <= 10000 and abs(x) <= 10000 and abs(y) <= 10000
+                        and any(screen.availableGeometry().intersects(QRect(x, y, w, h))
+                                for screen in QGuiApplication.screens())):
+                    self.setGeometry(x, y, w, h)
+            sizes = settings.get("workspace.splitter")
+            if isinstance(sizes, list) and len(sizes) == 3 and all(type(x) is int and 0 < x <= 10000 for x in sizes):
+                self.splitter.setSizes(sizes)
+            if settings.get("workspace.maximized") is True:
+                self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
+
         self.navigation.page_selected.connect(self.show_page)
         self.transport.now_playing_requested.connect(lambda: self.show_page(PageId.NOW_PLAYING))
         self.transport.queue_pane_toggled.connect(self.play_queue.setVisible)
@@ -157,6 +171,13 @@ class MainWindow(QMainWindow):
             event.ignore()
             self.hide()
             return
+        if self.settings is not None:
+            rect = self.normalGeometry() if self.isMaximized() else self.geometry()
+            self.settings.set("workspace.geometry", [rect.x(), rect.y(), rect.width(), rect.height()])
+            self.settings.set("workspace.maximized", self.isMaximized())
+            sizes = self.splitter.sizes()
+            if all(size > 0 for size in sizes):
+                self.settings.set("workspace.splitter", sizes)
         self.closing.emit()
         event.accept()
 
