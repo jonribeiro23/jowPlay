@@ -117,6 +117,13 @@ class LibraryStorage(Protocol):
         """
 
 
+class ThumbnailControls(Protocol):
+    """Controles externos; chamadas e callbacks ocorrem na thread da interface."""
+
+    def set_playing(self, playing: bool) -> None: ...
+    def shutdown(self) -> None: ...
+
+
 class PlayerState(Enum):
     STOPPED = auto()
     PLAYING = auto()

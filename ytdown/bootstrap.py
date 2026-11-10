@@ -101,6 +101,12 @@ def run() -> int:
     extract_batch = build_extract_batch()
     sharing = PhoneSharing(create_share_server)
     window = build_main_window(library, playback, extract_batch, sharing)
+    if sys.platform == "win32":
+        from ytdown.infrastructure.windows_taskbar import WindowsThumbnailControls
+        from ytdown.presentation.qt.taskbar_controls import TaskbarPlayback
+        controls = WindowsThumbnailControls(window, playback.previous, playback.play_pause, playback.next)
+        window.taskbar_playback = TaskbarPlayback(playback, controls)
+        window.closing.connect(window.taskbar_playback.shutdown)
     start_library_check(window, library)
     window.closing.connect(player.shutdown)
     window.show()
