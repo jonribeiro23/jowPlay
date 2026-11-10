@@ -22,9 +22,9 @@ Nas listas de faixas de Músicas (inclusive filtrada pela busca), álbum, artist
 selecione uma ou mais linhas e clique com o botão direito para tocar a seleção, tocar em
 seguida ou adicionar à fila. A ordem segue as linhas exibidas, inclusive entradas repetidas.
 No Windows, uma faixa cujo arquivo existe também oferece **Mostrar no Explorer**. Enter
-mantém a reprodução a partir da linha atual na lista visível. As ações de playlist,
-propriedades, envio e exclusão de faixas, bem como os atalhos Delete e Alt+Enter para essas
-ações, ainda não estão disponíveis nesse menu.
+mantém a reprodução a partir da linha atual na lista visível. O menu também oferece
+playlist, envio e exclusão da biblioteca quando os serviços estão disponíveis. A edição
+de propriedades e o atalho Alt+Enter ainda não estão disponíveis.
 
 A navegação reúne Músicas, Artistas, Álbuns e Gêneros em Biblioteca, com contagens atualizadas após alterações; Playlists e Extrair ficam na raiz. As setas acima do conteúdo percorrem o histórico e o caminho indica a seção atual. A última seção é restaurada ao abrir o aplicativo. As páginas ainda não implementadas permanecem reservadas para versões futuras.
 
@@ -43,7 +43,7 @@ filtra nome e artista. A grade permite ordenar por álbum, artista, ano ou data 
 inclusão (primeira faixa, mais recentes primeiro). Selecione uma capa e clique em
 **Abrir álbum** ou pressione Enter para ver as faixas e tocar o álbum; duplo clique
 na capa inicia diretamente a reprodução. Capas ausentes usam a imagem padrão.
-Artistas ainda é uma página provisória.
+Artistas e Gêneros agrupam as faixas e permitem abrir os respectivos detalhes.
 Arquivos antigos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
 
 Duplicatas são ignoradas pela URL canônica de origem ou pelo SHA-256 dos bytes,
@@ -161,6 +161,10 @@ powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\
 ```
 
 O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`.
+Para usar somente dependências já instaladas ou em cache, acrescente `-Offline` aos
+scripts: o Windows não executa pip, e o Gradle usa `--offline`. O wrapper do Gradle
+precisa já estar no cache. Veja o [roteiro JOW-49](docs/jow-49-validacao.md) para
+pré-requisitos, validação manual e pendências.
 
 ### Arquitetura
 

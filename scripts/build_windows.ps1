@@ -1,17 +1,22 @@
 ﻿# Gera dist\ytDown\ytDown.exe usando a versão mais recente do yt-dlp.
 # Uso, na raiz do projeto: powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
+param([switch]$Offline)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot
 Set-Location $root
+if ($Offline) { $env:PYINSTALLER_CONFIG_DIR = Join-Path $root "build\pyinstaller-cache" }
 
 $python = ".\.venv\Scripts\python.exe"
 if (-not (Test-Path $python)) {
+    if ($Offline) { throw "Modo offline requer .venv existente com as dependências instaladas." }
     py -3 -m venv .venv
     if ($LASTEXITCODE -ne 0) { throw "Falha ao criar o ambiente virtual." }
 }
 
-& $python -m pip install --quiet --upgrade -r requirements.txt
-if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar as dependências." }
+if (-not $Offline) {
+    & $python -m pip install --quiet --upgrade -r requirements.txt
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar as dependências." }
+}
 
 & $python -m unittest discover -s tests -t .
 if ($LASTEXITCODE -ne 0) { throw "Os testes falharam." }

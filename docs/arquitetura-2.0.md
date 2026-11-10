@@ -211,11 +211,11 @@ A busca no cabeçalho usa Ctrl+F, Esc para limpar e debounce de 250 ms. A janela
 encaminha o texto às páginas que oferecem `set_search_text`; Músicas aplica-o
 em `TrackQuery`, preservando ordenação, seleção e fila. O SQLite compara palavras
 normalizadas em título, artista, álbum e gênero. Álbuns filtra nome e artista;
-Artistas permanece provisória.
+Artistas e Gêneros usam as páginas de grupos descritas abaixo.
 
 O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `songs.header`, na mesma instância de `JsonSettings` usada pelo caso de uso de alteração da pasta. Seleção e faixa atual são preservadas por ID ao atualizar ou ordenar. O sinal `extraction_finished` atualiza a página também nos encerramentos parciais.
 
-A árvore mostra contagens dos repositórios de faixas e resumos de artistas, álbuns e gêneros. A atualização do modelo de músicas também atualiza essas contagens após extração, importação, verificação e remoção. O histórico da janela alimenta as setas e o breadcrumb; `navigation.last_page` compartilha o mesmo `Settings` e valores inválidos retornam a Músicas. Playlists permanece uma página reservada, pois ainda não há repositório implementado.
+A árvore mostra contagens dos repositórios de faixas e resumos de artistas, álbuns e gêneros. A atualização do modelo de músicas também atualiza essas contagens após extração, importação, verificação e remoção. O histórico da janela alimenta as setas e o breadcrumb; `navigation.last_page` compartilha o mesmo `Settings` e valores inválidos retornam a Músicas. Playlists tem repositório próprio, descrito abaixo.
 
 O resumo da extração resolve os caminhos salvos pelo armazenamento e repositório em IDs, preservando a ordem do lote para reprodução e o ID existente em substituições. A visualização do lote e a página Adicionadas recentemente filtram por esses IDs; a última acumula somente extrações durante a vida da janela, e acompanha atualizações e mudanças de pasta pelo repositório.
 
@@ -277,8 +277,8 @@ A seleção múltipla é lida por posição no modelo, preservando a ordem visua
 com o mesmo ID. Tocar substitui a fila; tocar em seguida e adicionar à fila usam os
 serviços de `Playback`. A busca em Músicas atua sobre a mesma tabela. No Windows, o menu
 oferece mostrar no Explorer somente para uma faixa cujo arquivo existe. Playlist,
-propriedades, envio e exclusão de faixas não estão integrados ao menu; Delete e Alt+Enter
-permanecem sem essas ações. Enter e duplo clique mantêm a reprodução da lista visível.
+envio e exclusão também estão integrados quando os serviços estão disponíveis; edição
+de propriedades e Alt+Enter permanecem pendentes. Enter e duplo clique mantêm a reprodução da lista visível.
 
 ## Estatísticas de reprodução
 
