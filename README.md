@@ -251,3 +251,11 @@ A grade e a edição de capas ainda não estão implementadas. Para integrar uma
 As páginas de artistas e gêneros agrupam faixas sem metadados em grupos desconhecidos. Artistas exibem quantidades de álbuns e faixas, uma grade de álbuns e todas as faixas; gêneros exibem suas faixas. Em ambos, **Tocar tudo** usa as faixas do grupo. A busca considera título, artista, álbum e gênero; as contagens representam o grupo inteiro. A biblioteca é atualizada após extração e importação.
 
 A grade de álbuns do artista apresenta nomes e contagens, sem capas ou abertura direta do álbum; a página Álbuns oferece esses recursos.
+# Exclusão de faixas
+
+Nas listas de faixas, selecione uma ou mais músicas e pressione Delete ou escolha
+“Excluir da biblioteca” no menu de contexto. Após a confirmação, os arquivos vão
+para a Lixeira do Windows e as faixas saem do índice e da fila. A faixa atual avança
+antes da exclusão. Falhas são informadas por faixa; arquivos indisponíveis não são
+removidos por essa ação. Restaurar um arquivo pela Lixeira não o reinsere no índice;
+importe-o novamente. Playlists salvas ainda não existem no aplicativo.

@@ -98,6 +98,12 @@ class QtAudioPlayer:
         self._pending_seek = None
         self._player.stop()
 
+    def unload(self) -> None:
+        self._player.stop()
+        self._path = None
+        self._pending_seek = None
+        self._player.setSource(QUrl())
+
     def seek(self, position_ms: int) -> None:
         position_ms = max(0, position_ms)
         if self._player.mediaStatus() in (QMediaPlayer.MediaStatus.LoadingMedia, QMediaPlayer.MediaStatus.NoMedia):

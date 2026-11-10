@@ -7,6 +7,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from threading import Event
+import shutil
+import tempfile
 
 from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository, ThumbnailCache
 from ytdown.domain.errors import ExtractionError, LibraryError, UnreadableAudio
@@ -17,6 +19,55 @@ from ytdown.domain.text import search_key
 from ytdown.domain.urls import canonical_video_url
 
 LIBRARY_FOLDER_KEY = "library_folder"
+
+
+class DeleteTracks:
+    """Envia cada faixa à Lixeira e confirma o índice individualmente."""
+
+    def __init__(self, storage, tracks, playback):
+        self.storage, self.tracks, self.playback = storage, tracks, playback
+
+    def __call__(self, ids):
+        removed, errors = set(), []
+        for track_id in dict.fromkeys(ids):
+            track = self.tracks.get(track_id)
+            if track is None:
+                continue
+            try:
+                path = self.storage.absolute(track.rel_path)
+                if not self.storage.is_available() or not self.storage.exists(track.rel_path):
+                    raise LibraryError("Arquivo ou pasta da biblioteca indisponível")
+                temp = Path(tempfile.mkdtemp(prefix="ytdown-delete-"))
+                backup = temp / path.name
+                safe_to_clean = True
+                try:
+                    shutil.copy2(path, backup)
+                    current = self.playback.current
+                    displaced = ([item for item in self.playback.queue if item.id == track_id]
+                                 if current is not None and current.id == track_id else [])
+                    if displaced:
+                        self.playback.remove_tracks({track_id})
+                    try:
+                        self.tracks.remove_with_file(track_id, lambda: self.storage.trash(track.rel_path))
+                    except Exception as exc:
+                        if not path.exists():
+                            try:
+                                path.parent.mkdir(parents=True, exist_ok=True)
+                                shutil.copy2(backup, path)
+                            except OSError as restore_error:
+                                safe_to_clean = False
+                                raise LibraryError(f"{exc}; cópia de recuperação em {backup}: {restore_error}") from exc
+                        if displaced:
+                            self.playback.append(displaced)
+                        raise
+                    self.playback.remove_tracks({track_id})
+                finally:
+                    if safe_to_clean:
+                        shutil.rmtree(temp, ignore_errors=True)
+                removed.add(track_id)
+            except Exception as exc:
+                errors.append((track, str(exc)))
+        return removed, errors
 
 
 @dataclass(frozen=True)

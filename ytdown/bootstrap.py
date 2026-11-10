@@ -122,7 +122,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.groups_page import GroupsPage
     from ytdown.presentation.qt.now_playing import NowPlayingPage, CompactPlayer
     from PySide6.QtGui import QPixmap
-    from ytdown.application.library import RemoveUnavailableTracks
+    from ytdown.application.library import DeleteTracks, RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
     from ytdown.infrastructure.import_files import FileSystemImportFiles
@@ -188,6 +188,12 @@ def build_main_window(library, playback, extract_batch, sharing):
     window.closing.connect(lambda: library.settings.set("workspace.playback", playback.workspace_state()))
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     pages[PageId.SONGS].model.modelReset.connect(pages[PageId.RECENT].refresh)
+    delete_tracks = DeleteTracks(library.storage, library.tracks, playback)
+    for page in (PageId.SONGS, PageId.RECENT, PageId.ALBUMS, PageId.ARTISTS, PageId.GENRES):
+        pages[page].track_actions.delete_tracks = delete_tracks
+        pages[page].track_actions.refresh_library = pages[PageId.SONGS].refresh
+    window.play_queue.delete_tracks = delete_tracks
+    window.play_queue.refresh_library = pages[PageId.SONGS].refresh
     last_ids = []
     session_ids = set()
 

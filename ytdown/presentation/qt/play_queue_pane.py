@@ -5,7 +5,7 @@ import weakref
 
 from PySide6.QtCore import QItemSelectionModel, Qt
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListWidget,
-                               QListWidgetItem, QPushButton, QVBoxLayout, QWidget)
+                               QListWidgetItem, QPushButton, QVBoxLayout, QWidget, QMenu, QMessageBox)
 
 from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.songs_page import TRACKS_MIME, SongsTable
@@ -87,6 +87,10 @@ class _QueueList(QListWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Delete and self.pane._playback is not None:
+            if self.pane.delete_tracks is not None:
+                self.pane.delete_selected()
+                event.accept()
+                return
             for row in sorted((self.row(item) for item in self.selectedItems()), reverse=True):
                 self.pane._playback.remove(row)
             event.accept()
@@ -98,6 +102,8 @@ class PlayQueuePane(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self._playback = None
+        self.delete_tracks = None
+        self.refresh_library = None
         self._keys = []
         self.setObjectName("playQueuePane")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -105,6 +111,8 @@ class PlayQueuePane(QWidget):
         title = QLabel(TITLE)
         title.setObjectName("paneTitle")
         self.items = _QueueList(self)
+        self.items.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.items.customContextMenuRequested.connect(self._menu)
         self.items.setObjectName("playQueue")
         self.empty_message = QLabel(EMPTY_MESSAGE)
         self.empty_message.setObjectName("paneHint")
@@ -141,6 +149,40 @@ class PlayQueuePane(QWidget):
     def shutdown(self):
         if self._playback is not None:
             self._playback.remove_listener(self._listener)
+
+    def _menu(self, position):
+        item = self.items.itemAt(position)
+        if item is None or self.delete_tracks is None:
+            return
+        if not item.isSelected():
+            self.items.setCurrentItem(item)
+        menu = QMenu(self.items)
+        menu.addAction("Remover da fila", self.remove_selected)
+        menu.addAction("Excluir da biblioteca", self.delete_selected)
+        menu.exec(self.items.viewport().mapToGlobal(position))
+        menu.deleteLater()
+
+    def remove_selected(self):
+        for row in sorted((self.items.row(item) for item in self.items.selectedItems()), reverse=True):
+            self._playback.remove(row)
+
+    def delete_selected(self):
+        ids = {self._playback.queue[self.items.row(item)].id for item in self.items.selectedItems()}
+        ids.discard(None)
+        if not ids:
+            return
+        answer = QMessageBox.question(self, "Excluir faixas",
+                                      f"Enviar {len(ids)} faixa(s) para a Lixeira e removê-las da biblioteca?",
+                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                      QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        _, errors = self.delete_tracks(ids)
+        if self.refresh_library:
+            self.refresh_library()
+        if errors:
+            QMessageBox.warning(self, "Falha ao excluir", "\n".join(
+                f"{track.title}: {message}" for track, message in errors))
 
     def refresh(self):
         if self._playback is None:

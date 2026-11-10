@@ -374,6 +374,9 @@ class Playback:
         self._notify(lambda listener: listener.on_track_changed(track))
         if track is None:
             self._player.stop()
+            unload = getattr(self._player, "unload", None)
+            if unload:
+                unload()
             return False
         try:
             path = self._storage.absolute(track.rel_path)

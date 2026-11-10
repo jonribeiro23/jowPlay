@@ -291,6 +291,14 @@ class SqliteTrackRepository:
         with self._db:
             self._db.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
 
+    @_locked
+    def remove_with_file(self, track_id: int, remove_file) -> None:
+        with self._db:
+            cursor = self._db.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
+            if not cursor.rowcount:
+                raise KeyError(track_id)
+            remove_file()
+
     # --- consultas
 
     @_locked
