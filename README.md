@@ -64,6 +64,8 @@ Coloque uma URL por linha na caixa de URLs; o botão **Colar** acrescenta o que 
 - Com mais de um vídeo, o campo **Nome** fica desativado e cada áudio recebe o título do próprio vídeo. **Autor**, **Álbum**, **Gênero**, **Ano** e **Imagem de capa** valem para todos.
 - Para extrair um álbum, marque **Numerar faixas na ordem da lista**: cada vídeo recebe o nº da sua posição (a partir do nº digitado em "Nº da primeira faixa", ou de 1).
 - **Enviar para o celular** envia todos os áudios salvos da última extração.
+- **Tocar agora** reproduz as faixas salvas na ordem da extração; **Ver na biblioteca** mostra somente as faixas desse lote. Falhas são ignoradas nessas ações.
+- **Adicionadas recentemente**, na navegação da biblioteca, reúne as extrações da sessão atual, inclusive substituições, sem incluir importações. A lista é reiniciada ao fechar o aplicativo.
 
 ### Informações do áudio
 

@@ -12,6 +12,7 @@ from ytdown.presentation.qt import theme
 
 class PageId(Enum):
     SONGS = "Músicas"
+    RECENT = "Adicionadas recentemente"
     ARTISTS = "Artistas"
     ALBUMS = "Álbuns"
     GENRES = "Gêneros"

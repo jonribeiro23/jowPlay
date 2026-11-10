@@ -9,11 +9,12 @@ from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.pages import PageId
 
 LIBRARY_LABEL = "Biblioteca"
-_LIBRARY_PAGES = (PageId.SONGS, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES)
+_LIBRARY_PAGES = (PageId.SONGS, PageId.RECENT, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES)
 _TOP_LEVEL_PAGES = (PageId.PLAYLISTS, PageId.EXTRACT)
 _PAGE_ROLE = Qt.ItemDataRole.UserRole
 PAGE_ICONS = {
     PageId.SONGS: "songs",
+    PageId.RECENT: "songs",
     PageId.ARTISTS: "artists",
     PageId.ALBUMS: "albums",
     PageId.GENRES: "genres",

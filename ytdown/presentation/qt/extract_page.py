@@ -135,6 +135,9 @@ class ExtractPage(QWidget):
     """
 
     extraction_finished = Signal()
+    results_ready = Signal(object)
+    play_requested = Signal()
+    library_requested = Signal()
 
     def __init__(
         self,
@@ -287,6 +290,14 @@ class ExtractPage(QWidget):
     def _buttons(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.addStretch()
+        self.play_button = QPushButton("Tocar agora")
+        self.play_button.setEnabled(False)
+        self.play_button.clicked.connect(self.play_requested)
+        row.addWidget(self.play_button)
+        self.library_button = QPushButton("Ver na biblioteca")
+        self.library_button.setEnabled(False)
+        self.library_button.clicked.connect(self.library_requested)
+        row.addWidget(self.library_button)
         self.show_file_button = QPushButton("Mostrar arquivo")
         self.show_file_button.setEnabled(False)
         self.show_file_button.clicked.connect(self._show_file)
@@ -516,6 +527,9 @@ class ExtractPage(QWidget):
         self._stop_background()
         self._set_working(False)
         self.saved_files = [result.path for result in results if result.path]
+        self.play_button.setEnabled(bool(self.saved_files))
+        self.library_button.setEnabled(bool(self.saved_files))
+        self.results_ready.emit(self.saved_files)
         if self.saved_files:
             # Essas informações são destes vídeos; não podem ir para os próximos sem querer.
             for field in self._detail_fields():
@@ -574,6 +588,8 @@ class ExtractPage(QWidget):
         self.main_button.setText(CANCEL_LABEL if working else EXTRACT_LABEL)
         self.main_button.setEnabled(True)
         if working:
+            self.play_button.setEnabled(False)
+            self.library_button.setEnabled(False)
             self.show_file_button.setEnabled(False)
             self.send_button.setEnabled(False)
         self._refresh_batch_fields()

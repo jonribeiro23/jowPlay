@@ -217,6 +217,8 @@ O estado do cabeçalho (visibilidade, ordem, largura e ordenação) fica em `son
 
 A árvore mostra contagens dos repositórios de faixas e resumos de artistas, álbuns e gêneros. A atualização do modelo de músicas também atualiza essas contagens após extração, importação, verificação e remoção. O histórico da janela alimenta as setas e o breadcrumb; `navigation.last_page` compartilha o mesmo `Settings` e valores inválidos retornam a Músicas. Playlists permanece uma página reservada, pois ainda não há repositório implementado.
 
+O resumo da extração resolve os caminhos salvos pelo armazenamento e repositório em IDs, preservando a ordem do lote para reprodução e o ID existente em substituições. A visualização do lote e a página Adicionadas recentemente filtram por esses IDs; a última acumula somente extrações durante a vida da janela, e acompanha atualizações e mudanças de pasta pelo repositório.
+
 ## Integridade da biblioteca (JOW-27)
 
 `CheckLibrary` roda numa `QThread` depois que a janela abre e sincroniza o campo `Track.missing` com os arquivos da pasta gerenciada. A raiz inteira indisponível não prova que todas as faixas foram apagadas: a checagem não escreve no índice e a interface mostra um único aviso. Erros pontuais de acesso também preservam o último estado da faixa. `RemoveUnavailableTracks` confirma novamente a ausência antes de remover apenas o registro; as cópias da faixa que estavam na fila de reprodução são purgadas pelo ID.

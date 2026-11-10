@@ -43,7 +43,7 @@ class MainWindowTests(unittest.TestCase):
         library = tree.topLevelItem(0)
         self.assertEqual(library.text(0), LIBRARY_LABEL)
         self.assertEqual([library.child(i).text(0) for i in range(library.childCount())],
-                         ["Músicas", "Artistas", "Álbuns", "Gêneros"])
+                         ["Músicas", "Adicionadas recentemente", "Artistas", "Álbuns", "Gêneros"])
         self.assertEqual([tree.topLevelItem(i).text(0) for i in range(1, tree.topLevelItemCount())],
                          ["Playlists", "Extrair"])
 

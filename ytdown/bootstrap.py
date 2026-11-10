@@ -130,8 +130,11 @@ def build_main_window(library, playback, extract_batch, sharing):
     remove_unavailable_case = RemoveUnavailableTracks(library.storage, library.tracks)
 
     def page_factory(page: PageId):
-        if page is PageId.SONGS:
-            pages[page] = SongsPage(library.tracks, playback, library.settings, storage=library.storage)
+        if page in (PageId.SONGS, PageId.RECENT):
+            pages[page] = SongsPage(library.tracks, playback, library.settings, storage=library.storage,
+                                    title=page.title)
+            if page is PageId.RECENT:
+                pages[page].set_ids([])
         elif page is PageId.ALBUMS:
             pages[page] = AlbumsPage(library.tracks, playback, library.storage, library.thumbnails,
                                      asset("default_cover.jpg"))
@@ -170,6 +173,42 @@ def build_main_window(library, playback, extract_batch, sharing):
     )
     window.closing.connect(window.transport.shutdown)
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
+    pages[PageId.SONGS].model.modelReset.connect(pages[PageId.RECENT].refresh)
+    last_ids = []
+    session_ids = set()
+
+    def extraction_results(paths):
+        last_ids.clear()
+        for path in paths:
+            try:
+                relative = path.relative_to(library.storage.root).as_posix()
+            except ValueError:
+                continue
+            track = library.tracks.find_by_path(relative)
+            if track is not None:
+                last_ids.append(track.id)
+                session_ids.add(track.id)
+        pages[PageId.RECENT].set_ids(session_ids)
+        pages[PageId.EXTRACT].play_button.setEnabled(bool(last_ids))
+        pages[PageId.EXTRACT].library_button.setEnabled(bool(last_ids))
+
+    def play_extracted():
+        tracks = [track for track_id in last_ids if (track := library.tracks.get(track_id)) is not None]
+        if tracks:
+            playback.play_tracks(tracks, 0)
+
+    def view_extracted():
+        window.search.clear()
+        pages[PageId.SONGS].set_ids(last_ids)
+        window.show_page(PageId.SONGS)
+
+    pages[PageId.EXTRACT].results_ready.connect(extraction_results)
+    pages[PageId.EXTRACT].play_requested.connect(play_extracted)
+    pages[PageId.EXTRACT].library_requested.connect(view_extracted)
+    window.navigation.page_selected.connect(lambda page: pages[PageId.SONGS].set_ids(None)
+                                            if page is PageId.SONGS else None)
+    window.navigation.itemClicked.connect(lambda item, column: pages[PageId.SONGS].set_ids(None)
+                                          if item is window.navigation._items[PageId.SONGS] else None)
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
 
     window.background_dialogs = []

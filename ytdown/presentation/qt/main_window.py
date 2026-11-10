@@ -194,7 +194,7 @@ class MainWindow(QMainWindow):
                 self.navigation.select(page)
             finally:
                 self.navigation.blockSignals(False)
-        prefix = "Biblioteca › " if page in (PageId.SONGS, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES) else ""
+        prefix = "Biblioteca › " if page in (PageId.SONGS, PageId.RECENT, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES) else ""
         detail = getattr(self._page_widgets[page], "current_key", None)
         self.breadcrumb.setText(prefix + page.title + (" › " + detail[0] if detail else ""))
         self.back_button.setEnabled(self._history_index > 0)

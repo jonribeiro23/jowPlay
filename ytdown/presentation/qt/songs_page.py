@@ -38,6 +38,7 @@ class TrackTableModel(QAbstractTableModel):
         self.repository = repository
         self.query = TrackQuery(sort=SortField.TITLE)
         self.tracks = []
+        self.ids = None
         self.refresh()
 
     def rowCount(self, parent=QModelIndex()):
@@ -81,24 +82,30 @@ class TrackTableModel(QAbstractTableModel):
 
     def refresh(self):
         tracks = self.repository.list_tracks(self.query)
+        if self.ids is not None:
+            tracks = [track for track in tracks if track.id in self.ids]
         self.beginResetModel()
         self.tracks = tracks
         self.endResetModel()
+
+    def set_ids(self, ids):
+        self.ids = None if ids is None else set(ids)
+        self.refresh()
 
 
 class SongsPage(QWidget):
     """A tabela tem seu próprio viewport: nunca cresce com o número de faixas."""
     def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings,
-                 remove_unavailable=None, storage=None):
+                 remove_unavailable=None, storage=None, title="Músicas"):
         super().__init__()
         self.setObjectName("page-songs")
         self.playback, self.settings = playback, settings
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*[theme.PAGE_MARGIN] * 4)
         heading = QHBoxLayout()
-        title = QLabel("Músicas")
-        title.setObjectName("pageTitle")
-        heading.addWidget(title)
+        title_label = QLabel(title)
+        title_label.setObjectName("pageTitle")
+        heading.addWidget(title_label)
         heading.addStretch()
         self.remove_unavailable_button = QPushButton("Remover faixas indisponíveis")
         self.remove_unavailable_button.setToolTip("Remove somente os registros de arquivos que continuam ausentes.")
@@ -185,6 +192,9 @@ class SongsPage(QWidget):
 
     def set_search_text(self, text):
         self.model.set_search_text(text)
+
+    def set_ids(self, ids):
+        self.model.set_ids(ids)
 
     def remove_unavailable(self) -> None:
         if self._remove_unavailable is None:
