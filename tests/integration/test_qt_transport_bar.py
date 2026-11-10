@@ -62,6 +62,32 @@ class TransportTests(unittest.TestCase):
         self.songs.table.setCurrentIndex(self.songs.model.index(0, 0))
         QTest.keyClick(self.songs.table, Qt.Key.Key_Return)
 
+    def test_controls_remain_centered_and_separate_when_resizing_with_long_metadata(self):
+        track = Track('long.mp3', 'Título muito longo ' * 80, datetime.now(),
+                      artist='Artista muito longo ' * 80, duration_ms=180_000)
+        self.playback.play_tracks([track])
+        bar = self.bar
+
+        def bounds(widget):
+            left = widget.mapTo(bar, widget.rect().topLeft()).x()
+            return left, left + widget.width()
+
+        for width in (900, 1200, 1600, 900):
+            with self.subTest(width=width):
+                self.window.resize(width, 760)
+                self.app.processEvents()
+                self.assertEqual(self.window.width(), width)
+                start, _ = bounds(bar.shuffle_button)
+                _, end = bounds(bar.repeat_button)
+                self.assertLessEqual(abs(start + end - bar.width()), 1)
+                self.assertLessEqual(bounds(bar.now_playing)[1], start)
+                self.assertLessEqual(bounds(bar.artist)[1], start)
+                self.assertLessEqual(bounds(bar.cover)[1], start)
+                self.assertLessEqual(end, bounds(bar.mute_button)[0])
+                self.assertLessEqual(bounds(bar.now_playing_button)[1], bar.width())
+                self.assertEqual(bar.now_playing.toolTip(), track.title)
+                self.assertEqual(bar.artist.toolTip(), track.display_artist)
+
     def test_now_playing_access_history_and_compact(self):
         page = self.window.page(PageId.NOW_PLAYING)
         compact = self.window.compact_player

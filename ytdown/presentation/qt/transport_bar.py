@@ -13,7 +13,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QSize, Qt, Signal, QSignalBlocker, Slot, QTimer
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QSlider, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QSlider, QToolButton, QVBoxLayout, QWidget
 
 from ytdown.application.playback import Playback
 from ytdown.application.ports import PlayerState
@@ -118,9 +118,10 @@ class TransportBar(QWidget):
 
         self.now_playing = QLabel("Nada tocando")
         self.now_playing.setObjectName("nowPlaying")
-        self.now_playing.setMinimumWidth(160)
         self.now_playing.setTextFormat(Qt.TextFormat.PlainText)
         self.artist.setTextFormat(Qt.TextFormat.PlainText)
+        for label in (self.now_playing, self.artist):
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.now_playing.setMaximumWidth(260)
         self.artist.setMaximumWidth(260)
 
@@ -306,12 +307,14 @@ class TransportBar(QWidget):
         details.addWidget(self.now_playing)
         details.addWidget(self.artist)
         left.addLayout(details, stretch=1)
+        left.addStretch()
         center = QHBoxLayout()
         center.setSpacing(theme.METRICS["space_s"])
         for button in (self.shuffle_button, self.previous_button, self.play_button, self.next_button,
                        self.repeat_button):
             center.addWidget(button, alignment=Qt.AlignmentFlag.AlignVCenter)
         right = QHBoxLayout()
+        right.setSpacing(theme.METRICS["space_s"])
         right.addStretch()
         right.addWidget(self.mute_button)
         right.addWidget(self.volume)
@@ -319,10 +322,18 @@ class TransportBar(QWidget):
         right.addWidget(self.queue_toggle)
         right.addWidget(self.now_playing_button)
 
-        controls_row = QHBoxLayout()
-        controls_row.addLayout(left, stretch=1)
-        controls_row.addLayout(center)
-        controls_row.addLayout(right, stretch=1)
+        controls_row = QGridLayout()
+        controls_row.addLayout(left, 0, 0)
+        controls_row.addLayout(center, 0, 1)
+        controls_row.addLayout(right, 0, 2)
+        # O maior mínimo das laterais é reservado em ambos os lados; o restante
+        # também é dividido igualmente, independentemente do tamanho dos textos.
+        side_minimum = (self.mute_button.width() + self.volume.width()
+                        + self.queue_toggle.sizeHint().width() + self.now_playing_button.sizeHint().width()
+                        + theme.METRICS["space_m"] + 3 * right.spacing())
+        for column in (0, 2):
+            controls_row.setColumnMinimumWidth(column, side_minimum)
+            controls_row.setColumnStretch(column, 1)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(theme.METRICS["space_m"], theme.METRICS["space_xs"],
