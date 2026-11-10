@@ -2,12 +2,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Event
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 from ytdown.application.ports import ImportFiles, LibraryStorage, MetadataReader, TrackRepository, ThumbnailCache
 from ytdown.domain.errors import ExtractionCancelled
 from ytdown.domain.library import Track
 from ytdown.domain.library_paths import library_path
 from ytdown.domain.urls import canonical_video_url
+
+HASH_WORKERS = 8
 
 
 @dataclass
@@ -38,18 +41,51 @@ class ImportAudios:
         try:
             hashes, urls = set(), set()
             existing = self.tracks.list_tracks()
-            for index, track in enumerate(existing):
-                tick('Indexando biblioteca', index, len(existing))
+            for track in existing:
                 if track.source_url:
                     urls.add(url_key(track.source_url))
+            # Fila limitada: não cria 5.000 futures e não importa nada enquanto
+            # ainda houver hashes existentes pendentes ou inconclusivos.
+            stop = Event()
+            class CombinedCancel:
+                def is_set(self):
+                    return cancel.is_set() or stop.is_set()
+            combined = CombinedCancel()
+            def fingerprint_existing(track):
                 path = self.storage.absolute(track.rel_path)
                 try:
-                    hashes.add(self.files.fingerprint(path, cancel, lambda: tick('Verificando duplicatas na biblioteca', index, len(existing))))
+                    return self.files.fingerprint(path, combined, lambda: None), None
                 except FileNotFoundError:
-                    pass  # Faixas ausentes ainda participam da deduplicação por URL.
+                    return None, None  # A URL da faixa ausente continua válida.
                 except OSError as exc:
-                    result.errors.append(f'{path}: {exc}')
-                    return result  # Não importar sem poder verificar duplicatas existentes.
+                    return None, f'{path}: {exc}'
+            executor = ThreadPoolExecutor(max_workers=HASH_WORKERS, thread_name_prefix='import-hash')
+            pending = set()
+            iterator = iter(existing)
+            completed = 0
+            try:
+                while True:
+                    while len(pending) < HASH_WORKERS:
+                        tick('Indexando biblioteca', completed, len(existing))
+                        track = next(iterator, None)
+                        if track is None:
+                            break
+                        pending.add(executor.submit(fingerprint_existing, track))
+                    if not pending:
+                        break
+                    tick('Verificando duplicatas na biblioteca', completed, len(existing))
+                    done, pending = wait(pending, timeout=0.05, return_when=FIRST_COMPLETED)
+                    for future in done:
+                        digest, error = future.result()
+                        if error:
+                            result.errors.append(error)
+                            return result  # Não importar com verificação inconclusiva.
+                        if digest is not None:
+                            hashes.add(digest)
+                        completed += 1
+            finally:
+                stop.set()
+                executor.shutdown(wait=True, cancel_futures=True)
             paths, errors = self.files.scan(folders, self.storage.root, cancel, lambda: tick('Procurando áudios'))
             result.errors.extend(errors)
             for index, source in enumerate(paths):

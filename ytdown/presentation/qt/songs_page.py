@@ -1,6 +1,6 @@
 """Lista virtualizada da biblioteca, com ordenação delegada ao repositório."""
 from dataclasses import replace
-from PySide6.QtCore import QAbstractTableModel, QByteArray, QMimeData, QModelIndex, Qt
+from PySide6.QtCore import QAbstractTableModel, QByteArray, QMimeData, QModelIndex, Qt, Signal
 from PySide6.QtGui import QDrag, QPalette
 from PySide6.QtWidgets import QAbstractItemView, QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QTableView, QVBoxLayout, QWidget
 
@@ -96,6 +96,8 @@ class TrackTableModel(QAbstractTableModel):
 
 class SongsPage(QWidget):
     """A tabela tem seu próprio viewport: nunca cresce com o número de faixas."""
+    library_refreshed = Signal()
+
     def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings,
                  remove_unavailable=None, storage=None, title="Músicas", send_to_phone=None):
         super().__init__()
@@ -193,6 +195,7 @@ class SongsPage(QWidget):
 
     def refresh(self):
         self.model.refresh()
+        self.library_refreshed.emit()
 
     def set_search_text(self, text):
         self.model.set_search_text(text)

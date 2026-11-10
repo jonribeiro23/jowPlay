@@ -279,7 +279,8 @@ class ImportFiles(Protocol):
     def scan(self, folders: Iterable[Path], excluded: Path, cancel: threading.Event,
              tick: Callable[[], None]) -> tuple[list[Path], list[str]]: ...
 
-    def fingerprint(self, path: Path, cancel: threading.Event, tick: Callable[[], None]) -> str: ...
+    def fingerprint(self, path: Path, cancel: threading.Event, tick: Callable[[], None]) -> str:
+        """SHA-256 completo; chamadas distintas podem ocorrer em paralelo."""
 
     def staged(self, source: Path, root: Path, cancel: threading.Event, tick: Callable[[], None]) -> ContextManager[Path]:
         """Context manager: cópia completa temporária; sempre limpa ao sair."""

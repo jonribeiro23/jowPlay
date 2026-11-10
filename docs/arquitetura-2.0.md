@@ -283,3 +283,7 @@ permanecem sem essas ações. Enter e duplo clique mantêm a reprodução da lis
 ## Estatísticas de reprodução
 
 `Listening` acumula avanço de posição limitado pelo tempo monotônico durante a execução; seek redefine a amostra e pausa não acumula. A duração tardia pode ativar o limiar já atingido. `Playback` registra uma vez por carregamento, usando data local e `record_play` atômico no repositório, e avisa as tabelas. Erros de persistência e do listener de estatísticas são registrados no log. A precisão depende dos eventos de posição e estado do player; latência de eventos pode atrasar ou reduzir a contagem.
+
+## Benchmark do workspace (JOW-47)
+
+O [benchmark reproduzível e suas limitações](arquitetura-benchmark-workspace.md) usa 5.000 WAVs temporários, 500 álbuns e 300 artistas em Qt offscreen. Nesta máquina, importar 10 arquivos com 5.000 existentes levou 39,811 s antes e 6,068 s depois de paralelizar a leitura dos hashes, em medições únicas. A deduplicação continua calculando SHA-256 completo dos arquivos existentes antes de importar; falhas de leitura interrompem a operação. Não se mediu o executável nem fluidez visual, e não há limites de aceitação verificados.

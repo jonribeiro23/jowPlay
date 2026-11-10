@@ -5,7 +5,7 @@ import unittest
 import wave
 from dataclasses import replace
 from pathlib import Path
-from threading import Event
+from threading import Barrier, Event, get_ident
 from unittest.mock import patch
 
 from ytdown.application.importing import ImportAudios
@@ -114,6 +114,27 @@ class ImportTests(unittest.TestCase):
             result = self.job([self.source])
         self.assertEqual(result.imported, 0)
         self.assertEqual(len(result.errors), 1)
+
+    def test_existing_hashes_run_concurrently_and_progress_stays_on_caller(self):
+        self.audio('a.wav', 1000)
+        self.audio('b.wav', 2000)
+        self.assertEqual(self.job([self.source]).imported, 2)
+        existing = {self.library.storage.absolute(t.rel_path) for t in self.library.tracks.list_tracks()}
+        fingerprint = self.files.fingerprint
+        barrier = Barrier(2, timeout=5)
+        workers = set()
+        caller = get_ident()
+        progress_threads = set()
+        def synchronized(path, cancel, tick):
+            if path in existing:
+                workers.add(get_ident())
+                barrier.wait()
+            return fingerprint(path, cancel, tick)
+        with patch.object(self.files, 'fingerprint', side_effect=synchronized):
+            result = self.job([self.source], on_progress=lambda *args: progress_threads.add(get_ident()))
+        self.assertEqual((result.imported, result.duplicates, result.errors), (0, 2, []))
+        self.assertEqual(len(workers), 2)
+        self.assertEqual(progress_threads, {caller})
 
     def test_repository_failure_discards_file(self):
         self.audio()

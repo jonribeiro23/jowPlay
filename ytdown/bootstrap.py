@@ -178,7 +178,7 @@ def build_main_window(library, playback, extract_batch, sharing):
         window.play_queue.save_playlist = lambda queue: window.navigation.create_playlist(queue)
         playlist_page.send_button.clicked.connect(lambda: pages[PageId.SONGS].track_actions.send_tracks(playlist_page.playlist.tracks)
                                                   if playlist_page.playlist else None)
-        pages[PageId.SONGS].model.modelReset.connect(playlist_page.refresh)
+        pages[PageId.SONGS].library_refreshed.connect(playlist_page.refresh)
     from ytdown.presentation.qt.playback_shortcuts import PlaybackShortcuts
     window.playback_shortcuts = PlaybackShortcuts(window, playback)
     window.closing.connect(window.playback_shortcuts.shutdown)
@@ -186,10 +186,10 @@ def build_main_window(library, playback, extract_batch, sharing):
     pages[PageId.NOW_PLAYING].compact_requested.connect(window.compact_player.show)
     window.closing.connect(window.compact_player.shutdown)
     window.navigation.set_counts(library.tracks)
-    pages[PageId.SONGS].model.modelReset.connect(lambda: window.navigation.set_counts(library.tracks))
-    pages[PageId.SONGS].model.modelReset.connect(pages[PageId.ALBUMS].refresh)
+    pages[PageId.SONGS].library_refreshed.connect(lambda: window.navigation.set_counts(library.tracks))
+    pages[PageId.SONGS].library_refreshed.connect(pages[PageId.ALBUMS].refresh)
     for group_page in (PageId.ARTISTS, PageId.GENRES):
-        pages[PageId.SONGS].model.modelReset.connect(pages[group_page].refresh)
+        pages[PageId.SONGS].library_refreshed.connect(pages[group_page].refresh)
         pages[group_page].detail_changed.connect(
             lambda title, page=group_page: window.breadcrumb.setText(
                 "Biblioteca › " + page.title + (" › " + title if title else ""))
@@ -209,7 +209,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     playback.restore_workspace(library.settings.get("workspace.playback"), library.tracks)
     window.closing.connect(lambda: library.settings.set("workspace.playback", playback.workspace_state()))
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
-    pages[PageId.SONGS].model.modelReset.connect(pages[PageId.RECENT].refresh)
+    pages[PageId.SONGS].library_refreshed.connect(pages[PageId.RECENT].refresh)
     delete_tracks = DeleteTracks(library.storage, library.tracks, playback)
     for page in (PageId.SONGS, PageId.RECENT, PageId.ALBUMS, PageId.ARTISTS, PageId.GENRES):
         pages[page].track_actions.delete_tracks = delete_tracks
