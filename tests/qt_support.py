@@ -19,7 +19,9 @@ def dispose(widget: QWidget) -> None:
     Sem isso, o Python destrói os widgets ao encerrar, às vezes depois da QApplication,
     e o processo cai (acesso inválido à memória) mesmo com todos os testes passando.
     """
-    widget.close()
+    closed = widget.close()
+    if not closed and not wait_until(widget.close):
+        raise AssertionError("O widget não terminou seu encerramento em segundo plano")
     widget.deleteLater()
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 

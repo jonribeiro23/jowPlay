@@ -181,7 +181,6 @@ def build_main_window(library, playback, extract_batch, sharing):
         read_cover=read_cover,
         default_cover=QPixmap(str(asset("default_cover.jpg"))),
     )
-    window.closing.connect(window.transport.shutdown)
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     pages[PageId.SONGS].model.modelReset.connect(pages[PageId.RECENT].refresh)
     last_ids = []

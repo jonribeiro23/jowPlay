@@ -11,7 +11,7 @@ import threading
 import weakref
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QSize, Qt, Signal, QSignalBlocker, Slot
+from PySide6.QtCore import QObject, QSize, Qt, Signal, QSignalBlocker, Slot, QTimer
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QSlider, QToolButton, QVBoxLayout, QWidget
 
@@ -103,6 +103,8 @@ class TransportBar(QWidget):
         self._duration = 0
         self._requests = queue.Queue(maxsize=1)
         self._stopped = threading.Event()
+        self._worker = None
+        self._has_requested = False
         self._cover_result = _CoverResult()
         self._cover_result.ready.connect(self._cover_ready)
         self._default_cover = QPixmap()
@@ -187,9 +189,10 @@ class TransportBar(QWidget):
                 self.cover.size(), Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation)
         if read_cover is not None:
-            threading.Thread(target=_read_covers,
-                             args=(requests, stopped, self._cover_result, read_cover),
-                             daemon=True, name="transport-cover").start()
+            self._worker = threading.Thread(target=_read_covers,
+                                            args=(requests, stopped, self._cover_result, read_cover),
+                                            daemon=True, name="transport-cover")
+            self._worker.start()
         self._read_cover = read_cover
         self.play_button.clicked.connect(playback.play_pause)
         self.previous_button.clicked.connect(playback.previous)
@@ -208,10 +211,15 @@ class TransportBar(QWidget):
         self.on_settings_changed()
         self.on_position_changed(playback.position_ms, playback.duration_ms)
 
-    def shutdown(self) -> None:
+    def shutdown(self, retry=None) -> bool:
         self._generation += 1
         if self._playback is not None:
             self._cleanup()
+        if self._has_requested and self._worker is not None and self._worker.is_alive():
+            if retry is not None:
+                QTimer.singleShot(25, retry)
+            return False
+        return True
 
     def _begin_seek(self):
         self._dragging = True
@@ -245,6 +253,7 @@ class TransportBar(QWidget):
         # O aviso antecede o load: posição/duração do player ainda podem ser da faixa anterior.
         self.on_position_changed(0, track.duration_ms if track else 0)
         if track is not None and self._read_cover is not None:
+            self._has_requested = True
             _latest(self._requests, (self._generation, track))
 
     @Slot(int, QImage)

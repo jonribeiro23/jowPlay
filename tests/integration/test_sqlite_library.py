@@ -38,6 +38,17 @@ class SqliteContractTests(TempDatabase, TrackRepositoryContract, unittest.TestCa
 
 
 class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
+    def test_record_play_preserves_edits_and_persists(self):
+        repo = self.open()
+        saved = repo.add(sample_tracks()[0])
+        repo.update(replace(saved, title="Editada"))
+        played = datetime(2026, 11, 9, 10, 30)
+        updated = repo.record_play(saved.id, played)
+        self.assertEqual((updated.title, updated.play_count, updated.last_played_at),
+                         ("Editada", saved.play_count + 1, played))
+        self.assertEqual(self.open().get(saved.id), updated)
+        self.assertIsNone(repo.record_play(99999, played))
+
     def test_can_be_used_from_other_threads(self):
         # A extração registra faixas fora da thread da interface, que continua consultando.
         repo = self.open()

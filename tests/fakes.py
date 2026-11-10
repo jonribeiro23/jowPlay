@@ -265,6 +265,14 @@ class InMemoryTrackRepository:
             raise KeyError(track.id)
         self._tracks[track.id] = track
 
+    def record_play(self, track_id, played_at):
+        track = self.get(track_id)
+        if track is None:
+            return None
+        track = replace(track, play_count=track.play_count + 1, last_played_at=played_at)
+        self._tracks[track_id] = track
+        return track
+
     def remove(self, track_id: int) -> None:
         self._tracks.pop(track_id, None)
 

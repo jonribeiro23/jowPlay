@@ -15,7 +15,7 @@ COLUMNS = (
     ("Álbum", SortField.ALBUM), ("Duração", SortField.DURATION),
     ("Gênero", SortField.GENRE), ("Ano", SortField.YEAR),
     ("Nº", SortField.TRACK_NO), ("Adicionada em", SortField.ADDED_AT),
-    ("Reproduções", SortField.PLAY_COUNT),
+    ("Reproduções", SortField.PLAY_COUNT), ("Última reprodução", SortField.LAST_PLAYED),
 )
 HEADER_KEY = "songs.header"
 TRACKS_MIME = "application/x-ytdown-tracks"
@@ -67,7 +67,8 @@ class TrackTableModel(QAbstractTableModel):
             return (track.title, track.display_artist, track.display_album, duration,
                     track.display_genre, track.year if track.year is not None else "",
                     track.track_no if track.track_no is not None else "",
-                    track.added_at.strftime("%d/%m/%Y %H:%M"), track.play_count)[index.column()]
+                    track.added_at.strftime("%d/%m/%Y %H:%M"), track.play_count,
+                    track.last_played_at.strftime("%d/%m/%Y %H:%M") if track.last_played_at else "")[index.column()]
         return None
 
     def sort(self, column, order=Qt.SortOrder.AscendingOrder):
@@ -144,6 +145,9 @@ class SongsPage(QWidget):
         self.count = QLabel()
         layout.addWidget(self.count)
         self._update_count()
+        listener = _PlayRecordedListener(self)
+        playback.add_listener(listener)
+        self.destroyed.connect(lambda: playback.remove_listener(listener))
 
     def save_preferences(self, *args):
         self.settings.set(HEADER_KEY, bytes(self.table.horizontalHeader().saveState().toBase64()).decode("ascii"))
@@ -207,3 +211,17 @@ class SongsPage(QWidget):
         missing = sum(track.missing for track in self.model.tracks)
         self.count.setText(f"{self.model.rowCount()} faixas")
         self.remove_unavailable_button.setEnabled(bool(missing) and self._remove_unavailable is not None)
+
+
+class _PlayRecordedListener:
+    def __init__(self, page):
+        self.page = page
+
+    def on_play_recorded(self, track):
+        self.page.refresh()
+
+    def on_track_changed(self, track): pass
+    def on_state_changed(self, state): pass
+    def on_position_changed(self, position_ms, duration_ms): pass
+    def on_queue_changed(self): pass
+    def on_track_unavailable(self, track, message): pass

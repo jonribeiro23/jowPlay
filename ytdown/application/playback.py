@@ -7,6 +7,9 @@ Toda a lógica roda sem som nos testes, com o FakeAudioPlayer.
 from __future__ import annotations
 
 import random
+import logging
+import time
+from datetime import datetime
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
@@ -15,6 +18,9 @@ from ytdown.application.ports import AudioPlayer, LibraryStorage, PlayerState, T
 from ytdown.domain.errors import LibraryError
 from ytdown.domain.library import Track
 from ytdown.domain.play_queue import PlayQueue, RepeatMode
+from ytdown.domain.listening import Listening
+
+logger = logging.getLogger(__name__)
 
 
 class PlaybackListener(Protocol):
@@ -42,7 +48,7 @@ class PlaybackSettingsListener(Protocol):
 
 class Playback:
     def __init__(self, player: AudioPlayer, storage: LibraryStorage, rng: random.Random | None = None,
-                 tracks: TrackRepository | None = None) -> None:
+                 tracks: TrackRepository | None = None, clock=time.monotonic, wall_clock=datetime.now) -> None:
         self._loaded_track: Track | None = None
         self._loaded_queue_track: Track | None = None
         self._tracks = tracks
@@ -53,6 +59,11 @@ class Playback:
         self._loading = 0  # Muda a cada faixa carregada; avisos de faixas antigas são ignorados.
         self._failures = 0  # Faixas seguidas que não tocaram (para não girar para sempre).
         self._state = PlayerState.STOPPED
+        self._clock, self._wall_clock = clock, wall_clock
+        self._listening = Listening()
+        self._sample_time = self._clock()
+        self._sample_position = 0
+        self._seeking = False
         player.set_listener(self)
 
     def add_listener(self, listener: PlaybackListener) -> None:
@@ -137,7 +148,9 @@ class Playback:
             self._start(self._queue.next(manual=True))  # A fila tinha acabado: recomeça.
 
     def stop(self) -> None:
+        self._sample(self._player.position_ms)
         self._player.stop()
+        self._listening = Listening(self.duration_ms)
 
     def next(self) -> None:
         self._failures = 0
@@ -150,7 +163,7 @@ class Playback:
         if track is None:
             return
         if self._queue.current_index == before:  # Recomeça a mesma faixa, sem recarregar o arquivo.
-            self._player.seek(0)
+            self.seek(0)
             if self._state is not PlayerState.PLAYING:
                 self._player.play()
             return
@@ -158,6 +171,8 @@ class Playback:
         self._start(track)
 
     def seek(self, position_ms: int) -> None:
+        self._sample(self._player.position_ms)
+        self._seeking = True
         self._player.seek(position_ms)
 
     def set_volume(self, volume: int) -> None:
@@ -246,14 +261,23 @@ class Playback:
     # --- avisos do player (PlayerListener)
 
     def on_position(self, position_ms: int) -> None:
+        if self._seeking:
+            self._seeking = False
+            self._sample_time, self._sample_position = self._clock(), position_ms
+        else:
+            self._sample(position_ms)
         if position_ms > 0:
             self._failures = 0  # Tocou de verdade.
         self._notify(lambda listener: listener.on_position_changed(position_ms, self.duration_ms))
 
     def on_duration(self, duration_ms: int) -> None:
+        if duration_ms > 0:
+            self._listening.duration_ms = duration_ms
+            self._record_if_due()
         self._notify(lambda listener: listener.on_position_changed(self._player.position_ms, self.duration_ms))
 
     def on_state(self, state: PlayerState) -> None:
+        self._sample(self._player.position_ms)
         self._state = state
         self._notify(lambda listener: listener.on_state_changed(state))
 
@@ -289,6 +313,9 @@ class Playback:
         if track is not None and self._tracks is not None and track.id is not None:
             track = self._tracks.get(track.id) or track
         self._loaded_track = track
+        self._listening = Listening(track.duration_ms if track else 0)
+        self._sample_time, self._sample_position = self._clock(), 0
+        self._seeking = False
         self._loading += 1
         loading = self._loading
         self._notify(lambda listener: listener.on_track_changed(track))
@@ -304,6 +331,33 @@ class Playback:
 
     def _notify_queue(self) -> None:
         self._notify(lambda listener: listener.on_queue_changed())
+
+    def _sample(self, position_ms: int) -> None:
+        now = self._clock()
+        if self._state is PlayerState.PLAYING and not self._seeking:
+            self._listening.advance(position_ms - self._sample_position,
+                                    max(0, (now - self._sample_time) * 1000))
+        self._sample_time, self._sample_position = now, position_ms
+        self._record_if_due()
+
+    def _record_if_due(self) -> None:
+        track = self._loaded_track
+        if not self._listening.qualifies or track is None or track.id is None or self._tracks is None:
+            return
+        self._listening.counted = True
+        try:
+            saved = self._tracks.record_play(track.id, self._wall_clock())
+            if saved is not None:
+                self._loaded_track = saved
+                for listener in list(self._listeners):
+                    callback = getattr(listener, "on_play_recorded", None)
+                    if callback:
+                        try:
+                            callback(saved)
+                        except Exception:
+                            logger.exception("Erro ao atualizar reprodução na interface")
+        except Exception:
+            logger.exception("Erro ao registrar reprodução da faixa %s", track.id)
 
     def _notify(self, call) -> None:
         for listener in list(self._listeners):

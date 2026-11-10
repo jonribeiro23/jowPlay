@@ -48,7 +48,7 @@ class SongsTests(unittest.TestCase):
     def test_columns_count_format_missing_and_all_sort_fields(self):
         model = self.page.model
         self.assertEqual(model.rowCount(), 3)
-        self.assertEqual(model.columnCount(), 9)
+        self.assertEqual(model.columnCount(), 10)
         self.assertEqual(self.page.count.text(), '3 faixas')
         for col, (label, field) in enumerate(COLUMNS):
             self.assertEqual(model.headerData(col, Qt.Orientation.Horizontal), label)
@@ -58,6 +58,17 @@ class SongsTests(unittest.TestCase):
         row = next(i for i,t in enumerate(model.tracks) if t.missing)
         self.assertIsNotNone(model.data(model.index(row,0), Qt.ItemDataRole.ForegroundRole))
         self.assertEqual(model.data(model.index(row,3)), '0:10')
+
+    def test_recorded_play_refreshes_statistics(self):
+        now = [0.0]
+        self.playback._clock = lambda: now[0]
+        track = self.repo.list_tracks()[0]
+        self.playback.play_tracks([track])
+        now[0] = 90
+        self.player.advance(90_000)
+        row = next(i for i, item in enumerate(self.page.model.tracks) if item.id == track.id)
+        self.assertEqual(self.page.model.data(self.page.model.index(row, 8)), track.play_count + 1)
+        self.assertTrue(self.page.model.data(self.page.model.index(row, 9)))
 
     def test_enter_and_double_click_use_whole_visible_order(self):
         table = self.page.table
@@ -158,8 +169,12 @@ class SongsTests(unittest.TestCase):
         library = build_library(self.root/'db.sqlite', self.root/'prefs.json', self.root/'music')
         self.addCleanup(library.close)
         from ytdown.infrastructure.qt_audio_player import QtAudioPlayer
-        player = QtAudioPlayer(self.app)
-        self.addCleanup(player.shutdown)
+        from PySide6.QtCore import QObject
+        from shiboken6 import delete, isValid
+        player_owner = QObject()
+        self.addCleanup(lambda: delete(player_owner) if isValid(player_owner) else None)
+        player = QtAudioPlayer(player_owner)
+        self.addCleanup(lambda: player.shutdown() if isValid(player_owner) else None)
         playback = Playback(player, library.storage, tracks=library.tracks)
         sharing = PhoneSharing(lambda callback: None)
         library.register = RegisterExtractedTrack(library.storage, library.tracks, FakeReader())
@@ -211,6 +226,9 @@ class SongsTests(unittest.TestCase):
         self.assertIsNotNone(player.source)
         window.close()
         self.assertIsNone(player.source)
+        # A fonte vazia não destrói o backend: libere seu proprietário antes da pasta.
+        delete(player_owner)
+        audio.unlink()
 
     def test_extraction_actions_and_session_history_use_ids(self):
         library = build_library(self.root/'session.sqlite', self.root/'session.json', self.root/'music')

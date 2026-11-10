@@ -206,6 +206,9 @@ class TrackRepository(Protocol):
     def update(self, track: Track) -> None:
         """Substitui todos os dados da faixa com o mesmo `id`. Falha com KeyError se ela não existir."""
 
+    def record_play(self, track_id: int, played_at) -> Track | None:
+        """Incrementa apenas as estatísticas atomicamente; devolve None se a faixa foi removida."""
+
     def remove(self, track_id: int) -> None:
         """Remove a faixa; não faz nada se ela não existir."""
 

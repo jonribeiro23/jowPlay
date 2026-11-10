@@ -278,6 +278,15 @@ class SqliteTrackRepository:
             raise KeyError(track.id)
 
     @_locked
+    def record_play(self, track_id: int, played_at: datetime) -> Track | None:
+        with self._db:
+            cursor = self._db.execute(
+                "UPDATE tracks SET play_count = play_count + 1, last_played_at = ? WHERE id = ?",
+                (_to_db(played_at), track_id),
+            )
+            return self.get(track_id) if cursor.rowcount else None
+
+    @_locked
     def remove(self, track_id: int) -> None:
         with self._db:
             self._db.execute("DELETE FROM tracks WHERE id = ?", (track_id,))

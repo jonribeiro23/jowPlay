@@ -117,6 +117,29 @@ class TransportTests(unittest.TestCase):
             release.set()
             page.deleteLater()
 
+    def test_window_waits_for_transport_cover_reader(self):
+        started, release = threading.Event(), threading.Event()
+        def slow_cover(track):
+            started.set()
+            release.wait(5)
+            return None
+        bar = TransportBar()
+        bar.bind(self.playback, read_cover=slow_cover)
+        self.window.background_jobs.append(bar)
+        finished = []
+        self.window.closing.connect(lambda: finished.append(True))
+        try:
+            self.playback.play_tracks(self.songs.model.tracks)
+            self.assertTrue(started.wait(1))
+            self.window.close()
+            self.assertEqual(finished, [])
+            release.set()
+            self.assertTrue(wait_until(lambda: bool(finished)))
+            self.assertFalse(bar._worker.is_alive())
+        finally:
+            release.set()
+            bar.deleteLater()
+
     def test_songs_transport_and_external_playback(self):
         self.assertFalse(self.bar.cover.pixmap().isNull())
         self.play_from_songs()

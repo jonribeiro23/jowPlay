@@ -266,3 +266,7 @@ serviços de `Playback`. A busca em Músicas atua sobre a mesma tabela. No Windo
 oferece mostrar no Explorer somente para uma faixa cujo arquivo existe. Playlist,
 propriedades, envio e exclusão de faixas não estão integrados ao menu; Delete e Alt+Enter
 permanecem sem essas ações. Enter e duplo clique mantêm a reprodução da lista visível.
+
+## Estatísticas de reprodução
+
+`Listening` acumula avanço de posição limitado pelo tempo monotônico durante a execução; seek redefine a amostra e pausa não acumula. A duração tardia pode ativar o limiar já atingido. `Playback` registra uma vez por carregamento, usando data local e `record_play` atômico no repositório, e avisa as tabelas. Erros de persistência e do listener de estatísticas são registrados no log. A precisão depende dos eventos de posição e estado do player; latência de eventos pode atrasar ou reduzir a contagem.
