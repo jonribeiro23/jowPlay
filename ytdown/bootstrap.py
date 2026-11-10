@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ytdown.application.playback import Playback
-from ytdown.application.playlists import ManagePlaylists
+from ytdown.application.playlists import ManagePlaylists, AutomaticPlaylists
 from ytdown.application.ports import Settings, LibraryStorage
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
 from ytdown.application.library import ChangeLibraryFolder, RegisterExtractedTrack, known_genres, library_folder
@@ -155,7 +155,7 @@ def build_main_window(library, playback, extract_batch, sharing):
             pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre",
                                      storage=library.storage, send_to_phone=sharing.send)
         elif page is PageId.PLAYLISTS and library.playlists is not None:
-            pages[page] = PlaylistsPage(library.playlists, playback)
+            pages[page] = PlaylistsPage(library.playlists, playback, AutomaticPlaylists(library.tracks))
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))
@@ -167,6 +167,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     if library.playlists is not None:
         playlist_page = pages[PageId.PLAYLISTS]
         window.navigation.bind_playlists(library.playlists, playlist_page)
+        window.closing.connect(playlist_page.detach_playback)
         window.navigation.playlist_selected.connect(lambda _id: window.show_page(PageId.PLAYLISTS))
         from PySide6.QtWidgets import QToolButton
         new_playlist = QToolButton(window.side_pane)

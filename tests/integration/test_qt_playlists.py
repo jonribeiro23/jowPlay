@@ -11,7 +11,7 @@ from tests.fakes import FakeAudioPlayer, FakeLibraryStorage
 from tests.integration.test_qt_play_queue_pane import Drop
 from tests.qt_support import dispose, qt_app
 from ytdown.application.playback import Playback
-from ytdown.application.playlists import ManagePlaylists
+from ytdown.application.playlists import ManagePlaylists, AutomaticPlaylists, AutomaticPlaylist
 from ytdown.domain.library import Track
 from ytdown.infrastructure.json_settings import JsonSettings
 from ytdown.infrastructure.sqlite_library import SqliteTrackRepository
@@ -27,6 +27,46 @@ class PlaylistUITests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt_app()
+
+    def test_automatic_read_only_play_send_copy_and_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = SqliteTrackRepository(Path(directory) / 'library.db')
+            a = repo.add(Track('a.mp3', 'A', datetime.now(), duration_ms=60000, play_count=1))
+            b = repo.add(Track('b.mp3', 'B', datetime.now(), duration_ms=60000, play_count=2))
+            service = ManagePlaylists(SqlitePlaylistRepository(repo))
+            player = FakeAudioPlayer()
+            elapsed = [0.0]
+            playback = Playback(player, FakeLibraryStorage(), tracks=repo, clock=lambda: elapsed[0])
+            page = PlaylistsPage(service, playback, AutomaticPlaylists(repo))
+            nav = NavigationPane()
+            nav.bind_playlists(service, page)
+            root = nav._items[PageId.PLAYLISTS]
+            item = next(root.child(i) for i in range(root.childCount()) if root.child(i).text(0) == 'Mais tocadas')
+            nav.setCurrentItem(item)
+            self.assertEqual([t.id for t in page.playlist.tracks], [b.id, a.id])
+            page.items.setCurrentRow(0)
+            QTest.keyClick(page.items, Qt.Key.Key_Delete)
+            page.move(0, 1)
+            self.assertEqual([t.id for t in page.playlist.tracks], [b.id, a.id])
+            page.play(1)
+            self.assertEqual(playback.current.id, a.id)
+            sent = []
+            page.send_button.clicked.connect(lambda: sent.extend(page.playlist.tracks))
+            page.send_button.click()
+            self.assertEqual([t.id for t in sent], [b.id, a.id])
+            repo.record_play(a.id, datetime.now())
+            elapsed[0] = 90
+            player.advance(90000)
+            self.assertEqual(repo.get(a.id).play_count, 3)
+            self.assertEqual([t.id for t in page.playlist.tracks], [a.id, b.id])
+            with patch('ytdown.presentation.qt.navigation.QInputDialog.getText', return_value=('Cópia', True)):
+                page.save_button.click()
+            self.assertEqual([t.id for t in page.playlist.tracks], [a.id, b.id])
+            self.assertIsNone(page.automatic)
+            page.detach_playback()
+            dispose(nav)
+            dispose(page)
+            repo.close()
 
     def test_three_add_paths_reorder_and_reopen(self):
         with tempfile.TemporaryDirectory() as directory:

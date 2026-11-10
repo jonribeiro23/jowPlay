@@ -8,6 +8,7 @@ from ytdown.presentation.qt.songs_page import SongsTable, TRACKS_MIME
 
 from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.pages import PageId
+from ytdown.application.playlists import AutomaticPlaylist
 
 LIBRARY_LABEL = "Biblioteca"
 _LIBRARY_PAGES = (PageId.SONGS, PageId.RECENT, PageId.ARTISTS, PageId.ALBUMS, PageId.GENRES)
@@ -58,6 +59,7 @@ class NavigationPane(QTreeWidget):
         self.setAcceptDrops(True)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._playlist_menu)
+        page.save_button.clicked.connect(lambda: self.create_playlist(page.playlist.tracks) if page.playlist else None)
         self.refresh_playlists()
 
     def refresh_playlists(self, selected=None):
@@ -71,6 +73,11 @@ class NavigationPane(QTreeWidget):
                 item.setData(0, Qt.ItemDataRole.UserRole + 1, playlist.id)
                 if playlist.id == selected:
                     self.setCurrentItem(item)
+            if self._playlist_page.automatic_playlists is not None:
+                for kind in AutomaticPlaylist:
+                    item = QTreeWidgetItem(root, [kind.value])
+                    item.setData(0, _PAGE_ROLE, PageId.PLAYLISTS)
+                    item.setData(0, Qt.ItemDataRole.UserRole + 2, kind.value)
             root.setExpanded(True)
         finally:
             self.blockSignals(False)
@@ -99,11 +106,14 @@ class NavigationPane(QTreeWidget):
             return
         self.setCurrentItem(item)
         playlist_id = item.data(0, Qt.ItemDataRole.UserRole + 1)
+        automatic = item.data(0, Qt.ItemDataRole.UserRole + 2)
         menu = QMenu(self)
         menu.addAction('Nova playlist', lambda: self.create_playlist())
         if playlist_id is not None:
             menu.addAction('Renomear', self.rename_playlist)
             menu.addAction('Excluir', self.delete_playlist)
+        if automatic is not None:
+            menu.addAction('Salvar como playlist', lambda: self.create_playlist(self._playlist_page.playlist.tracks))
         menu.exec(self.viewport().mapToGlobal(position))
 
     def rename_playlist(self):
@@ -200,8 +210,11 @@ class NavigationPane(QTreeWidget):
         if page is not None:
             self.page_selected.emit(page)
             playlist_id = current.data(0, Qt.ItemDataRole.UserRole + 1)
+            automatic = current.data(0, Qt.ItemDataRole.UserRole + 2)
             if page is PageId.PLAYLISTS and self._playlist_service is not None:
-                if playlist_id is None:
+                if automatic is not None:
+                    self._playlist_page.select_automatic(AutomaticPlaylist(automatic))
+                elif playlist_id is None:
                     self._playlist_page.select_playlist(None)
                 else:
                     self._select_playlist(playlist_id)
