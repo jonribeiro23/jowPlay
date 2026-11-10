@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListWidget,
                                QListWidgetItem, QPushButton, QVBoxLayout, QWidget)
 
+from ytdown.presentation.qt.track_actions import send_tracks_to_phone
 from ytdown.presentation.qt.transport_bar import _time
 from ytdown.application.playlists import AutomaticPlaylist
 
@@ -43,9 +44,10 @@ class PlaylistList(QListWidget):
 
 
 class PlaylistsPage(QWidget):
-    def __init__(self, service, playback, automatic_playlists=None):
+    def __init__(self, service, playback, automatic_playlists=None, storage=None, send_to_phone=None):
         super().__init__()
         self.service, self.playback = service, playback
+        self.storage, self.send_to_phone = storage, send_to_phone
         self.playlist_id = None
         self.automatic_playlists = automatic_playlists
         self.automatic = None
@@ -58,6 +60,8 @@ class PlaylistsPage(QWidget):
         self.play_button = QPushButton('Tocar')
         self.play_button.clicked.connect(lambda: self.play(0))
         self.send_button = QPushButton('Enviar para o celular')
+        self.send_button.setVisible(self.can_send)
+        self.send_button.clicked.connect(self.send_current)
         self.save_button = QPushButton('Salvar como playlist')
         row = QHBoxLayout()
         row.addWidget(self.play_button)
@@ -95,6 +99,15 @@ class PlaylistsPage(QWidget):
         self.send_button.setEnabled(bool(tracks))
         self.save_button.setVisible(self.automatic is not None)
         self.save_button.setEnabled(bool(tracks))
+
+    @property
+    def can_send(self):
+        return self.storage is not None and self.send_to_phone is not None
+
+    def send_current(self):
+        """Envia a playlist inteira (manual ou automática) ao celular."""
+        if self.can_send and self.playlist and self.playlist.tracks:
+            send_tracks_to_phone(self, self.storage, self.send_to_phone, list(self.playlist.tracks))
 
     def play(self, row):
         if self.playlist and self.playlist.tracks:

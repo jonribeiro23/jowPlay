@@ -101,9 +101,14 @@ class NavigationPane(QTreeWidget):
         self.playlist_selected.emit(playlist_id)
 
     def _playlist_menu(self, position):
-        item = self.itemAt(position)
+        menu = self.playlist_menu(self.itemAt(position))
+        if menu is not None:
+            menu.exec(self.viewport().mapToGlobal(position))
+
+    def playlist_menu(self, item):
+        """Menu de contexto de um item da seção Playlists (seleciona o item); None fora dela."""
         if item is None or item.data(0, _PAGE_ROLE) is not PageId.PLAYLISTS:
-            return
+            return None
         self.setCurrentItem(item)
         playlist_id = item.data(0, Qt.ItemDataRole.UserRole + 1)
         automatic = item.data(0, Qt.ItemDataRole.UserRole + 2)
@@ -114,7 +119,11 @@ class NavigationPane(QTreeWidget):
             menu.addAction('Excluir', self.delete_playlist)
         if automatic is not None:
             menu.addAction('Salvar como playlist', lambda: self.create_playlist(self._playlist_page.playlist.tracks))
-        menu.exec(self.viewport().mapToGlobal(position))
+        page = self._playlist_page
+        if (playlist_id is not None or automatic is not None) and page.can_send:
+            send = menu.addAction('Enviar para o celular', page.send_current)
+            send.setEnabled(bool(page.playlist and page.playlist.tracks))
+        return menu
 
     def rename_playlist(self):
         item = self.currentItem()

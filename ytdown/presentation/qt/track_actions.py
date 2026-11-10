@@ -9,6 +9,28 @@ from PySide6.QtWidgets import QAbstractItemView, QMenu, QMessageBox
 from ytdown.domain.errors import LibraryError, ShareError
 
 
+def send_tracks_to_phone(parent, storage, send_to_phone, tracks):
+    """Manda os arquivos das faixas ao diálogo de envio; as indisponíveis ficam de fora, com aviso."""
+    paths, missing = [], []
+    for track in tracks:
+        try:
+            path = storage.absolute(track.rel_path)
+            if track.missing or not path.is_file():
+                missing.append(track.title)
+            else:
+                paths.append(path)
+        except (LibraryError, OSError):
+            missing.append(track.title)
+    if missing:
+        QMessageBox.warning(parent, "Faixas indisponíveis",
+                            "Não foi possível enviar as faixas indisponíveis:\n" + "\n".join(missing))
+    if paths:
+        try:
+            send_to_phone(paths)
+        except ShareError as exc:
+            QMessageBox.warning(parent, "Enviar para o celular", str(exc))
+
+
 class TrackActions:
     def __init__(self, table, playback, storage=None, send_to_phone=None):
         self.table, self.playback, self.storage = table, playback, storage
@@ -75,24 +97,7 @@ class TrackActions:
                 self.refresh_library()
 
     def send_tracks(self, tracks):
-        paths, missing = [], []
-        for track in tracks:
-            try:
-                path = self.storage.absolute(track.rel_path)
-                if track.missing or not path.is_file():
-                    missing.append(track.title)
-                else:
-                    paths.append(path)
-            except (LibraryError, OSError):
-                missing.append(track.title)
-        if missing:
-            QMessageBox.warning(self.table, "Faixas indisponíveis",
-                                "Não foi possível enviar as faixas indisponíveis:\n" + "\n".join(missing))
-        if paths:
-            try:
-                self.send_to_phone(paths)
-            except ShareError as exc:
-                QMessageBox.warning(self.table, "Enviar para o celular", str(exc))
+        send_tracks_to_phone(self.table, self.storage, self.send_to_phone, tracks)
 
     def delete_selected(self):
         tracks = self.selected_tracks()

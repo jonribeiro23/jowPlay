@@ -161,7 +161,8 @@ def build_main_window(library, playback, extract_batch, sharing):
             pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre",
                                      storage=library.storage, send_to_phone=sharing.send)
         elif page is PageId.PLAYLISTS and library.playlists is not None:
-            pages[page] = PlaylistsPage(library.playlists, playback, AutomaticPlaylists(library.tracks))
+            pages[page] = PlaylistsPage(library.playlists, playback, AutomaticPlaylists(library.tracks),
+                                         storage=library.storage, send_to_phone=sharing.send)
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))

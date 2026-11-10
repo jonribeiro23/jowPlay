@@ -88,6 +88,55 @@ class TrackActionsTests(unittest.TestCase):
                 page.shutdown()
                 dispose(page)
 
+    def test_playlist_button_and_menu_send_whole_playlist(self):
+        from ytdown.application.playlists import AutomaticPlaylists, ManagePlaylists
+        from ytdown.infrastructure.library_storage import FileSystemLibraryStorage
+        from ytdown.infrastructure.sqlite_library import SqliteTrackRepository
+        from ytdown.infrastructure.sqlite_playlists import SqlitePlaylistRepository
+        from ytdown.presentation.qt.navigation import NavigationPane
+        from ytdown.presentation.qt.pages import PageId
+        from ytdown.presentation.qt.playlists_page import PlaylistsPage
+        with tempfile.TemporaryDirectory() as temp:
+            storage = FileSystemLibraryStorage(Path(temp))
+            repo = SqliteTrackRepository(Path(temp) / 'library.db')
+            tracks = [repo.add(Track(f'{i}.mp3', f'Faixa {i}', datetime.now(), play_count=i + 1)) for i in range(3)]
+            for i in (0, 2):
+                storage.absolute(f'{i}.mp3').write_bytes(b'audio')
+            service = ManagePlaylists(SqlitePlaylistRepository(repo))
+            playback = Playback(FakeAudioPlayer(), storage)
+            sharing = PhoneSharing(lambda changed: LocalShareServer(SharingSession(FakeDevices(), changed), http_port=0, discovery_port=0))
+            page = PlaylistsPage(service, playback, AutomaticPlaylists(repo), storage, sharing.send)
+            nav = NavigationPane()
+            nav.bind_playlists(service, page)
+            try:
+                with patch('ytdown.presentation.qt.navigation.QInputDialog.getText', return_value=('Lista', True)):
+                    nav.create_playlist([tracks[2], tracks[1], tracks[0]])
+                self.assertFalse(page.send_button.isHidden())
+                with patch('ytdown.presentation.qt.track_actions.QMessageBox.warning') as warning:
+                    page.send_button.click()
+                self.assertIn('Faixa 1', warning.call_args.args[2])
+                self.assertEqual([name for name, _ in sharing.dialog.rows()], ['2.mp3', '0.mp3'])
+
+                sharing.stop()
+                root = nav._items[PageId.PLAYLISTS]
+                automatic = next(root.child(i) for i in range(root.childCount()) if root.child(i).text(0) == 'Mais tocadas')
+                menu = nav.playlist_menu(automatic)
+                with patch('ytdown.presentation.qt.track_actions.QMessageBox.warning'):
+                    next(a for a in menu.actions() if a.text() == 'Enviar para o celular').trigger()
+                self.assertEqual([name for name, _ in sharing.dialog.rows()], ['2.mp3', '0.mp3'])
+
+                self.assertNotIn('Enviar para o celular', [a.text() for a in nav.playlist_menu(root).actions()])
+                without_phone = PlaylistsPage(service, playback)
+                self.assertTrue(without_phone.send_button.isHidden())
+                without_phone.detach_playback()
+                dispose(without_phone)
+            finally:
+                sharing.stop()
+                page.detach_playback()
+                dispose(nav)
+                dispose(page)
+                repo.close()
+
     def test_queue_actions_in_every_track_list(self):
         repo = InMemoryTrackRepository()
         for i in range(3):
