@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ytdown.application.playback import Playback
+from ytdown.application.playlists import ManagePlaylists
 from ytdown.application.ports import Settings, LibraryStorage
 from ytdown.application.extraction import ExtractAudio, ExtractBatch
 from ytdown.application.library import ChangeLibraryFolder, RegisterExtractedTrack, known_genres, library_folder
@@ -22,6 +23,7 @@ from ytdown.infrastructure.resources import asset
 from ytdown.infrastructure.sharing.device_store import JsonDeviceStore, default_store_path
 from ytdown.infrastructure.sharing.server import LocalShareServer
 from ytdown.infrastructure.sqlite_library import SqliteTrackRepository, default_library_db_path
+from ytdown.infrastructure.sqlite_playlists import SqlitePlaylistRepository
 from ytdown.infrastructure.tags import MutagenTagWriter
 from ytdown.infrastructure.windows_shell import music_folder
 from ytdown.infrastructure.youtube import YtDlpDownloader
@@ -44,6 +46,7 @@ class Library:
     settings: Settings
     storage: LibraryStorage
     thumbnails: FileThumbnailCache
+    playlists: ManagePlaylists | None = None
 
     def close(self) -> None:
         self.thumbnails.close()
@@ -64,6 +67,7 @@ def build_library(db_path: Path | None = None, settings_path: Path | None = None
         settings=settings,
         storage=storage,
         thumbnails=thumbnails,
+        playlists=ManagePlaylists(SqlitePlaylistRepository(tracks)),
     )
 
 

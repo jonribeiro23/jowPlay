@@ -69,6 +69,20 @@ MIGRATIONS: list[tuple[int, str]] = [
         CREATE INDEX tracks_source_url ON tracks (source_url);
         """,
     ),
+    (2, """
+        CREATE TABLE playlists (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            name_key TEXT NOT NULL UNIQUE
+        );
+        CREATE TABLE playlist_tracks (
+            playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL,
+            track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+            PRIMARY KEY (playlist_id, position)
+        );
+        CREATE INDEX playlist_tracks_track ON playlist_tracks(track_id);
+    """),
 ]
 
 

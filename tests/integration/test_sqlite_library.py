@@ -97,9 +97,9 @@ class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
         old = self.open()
         saved = old.add(sample_tracks()[0])
         old.close()
-        version_2 = (2, "ALTER TABLE tracks ADD COLUMN rating INTEGER NOT NULL DEFAULT 0")
+        version_2 = (3, "ALTER TABLE tracks ADD COLUMN rating INTEGER NOT NULL DEFAULT 0")
         upgraded = self.open(migrations=[*MIGRATIONS, version_2])
-        self.assertEqual(upgraded.schema_version, 2)
+        self.assertEqual(upgraded.schema_version, 3)
         self.assertEqual(upgraded.get(saved.id), saved)
         upgraded.close()
         with closing(sqlite3.connect(self.db_path)) as db:
@@ -110,11 +110,11 @@ class SqliteTrackRepositoryTests(TempDatabase, unittest.TestCase):
         old = self.open()
         saved = old.add(sample_tracks()[0])
         old.close()
-        broken = (2, "ALTER TABLE tracks ADD COLUMN rating INTEGER; ISTO NAO E SQL")
+        broken = (3, "ALTER TABLE tracks ADD COLUMN rating INTEGER; ISTO NAO E SQL")
         with self.assertRaises(LibraryError):
             self.open(migrations=[*MIGRATIONS, broken])
         reopened = self.open()
-        self.assertEqual((reopened.schema_version, reopened.get(saved.id)), (1, saved))
+        self.assertEqual((reopened.schema_version, reopened.get(saved.id)), (2, saved))
 
     def test_database_from_a_newer_app_is_refused(self):
         self.open().close()

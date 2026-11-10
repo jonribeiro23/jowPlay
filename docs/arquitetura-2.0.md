@@ -253,6 +253,17 @@ As capas são solicitadas sob demanda pela grade e resolvidas em um executor de 
 `GroupsPage` usa os resumos do domínio e consultas do repositório para agrupar e filtrar artistas e gêneros. A busca seleciona grupos que contenham alguma faixa correspondente; detalhes e contagens incluem todo o grupo. O refresh da página de músicas também atualiza os grupos após alterações da biblioteca.
 # Ações nas listas de faixas
 
+## Playlists (JOW-42)
+
+`Playlist` preserva a ordem e ocorrências repetidas; a duração soma cada ocorrência.
+Nomes são aparados, normalizados em NFC e comparados com `casefold` Unicode. A
+migração 2 acrescenta playlists e suas posições sem alterar faixas existentes.
+`SqlitePlaylistRepository` compartilha conexão e trava com o repositório de faixas;
+cada alteração usa transação imediata e a chave única também protege gravações de
+outras conexões. Chaves estrangeiras removem ocorrências quando a faixa é excluída,
+na mesma transação da exclusão JOW-41. `ManagePlaylists` oferece criação, edição,
+exclusão e captura da ordem visível da fila. A interface de playlists ainda é futura.
+
 ## Em reprodução
 
 `NowPlayingPage` e `CompactPlayer` observam o mesmo `Playback` da barra e da fila.
