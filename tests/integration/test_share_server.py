@@ -3,6 +3,8 @@
 import http.client
 import json
 import socket
+import shutil
+import subprocess
 import tempfile
 import time
 import unittest
@@ -95,6 +97,37 @@ class LocalShareServerTests(unittest.TestCase):
         while self.server.statuses()[0][1] != TransferStatus.SENT and time.monotonic() < deadline:
             time.sleep(0.01)
         self.assertEqual(self.server.statuses(), [("música.mp3", TransferStatus.SENT)])
+
+    @unittest.skipUnless(shutil.which('ffmpeg'), 'precisa do ffmpeg')
+    def test_five_tagged_tracks_download_with_metadata_and_cover(self):
+        from mutagen.id3 import APIC, ID3, TALB, TIT2, TPE1, TRCK
+        from ytdown.infrastructure.resources import asset
+        cover = asset('default_cover.jpg').read_bytes()
+        for i in range(5):
+            path = self.dir / f'{i}.mp3'
+            subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=44100',
+                            '-t', '0.1', str(path)], check=True)
+            tags = ID3()
+            tags.add(TIT2(encoding=3, text=f'Faixa {i}'))
+            tags.add(TPE1(encoding=3, text='Artista'))
+            tags.add(TALB(encoding=3, text='Álbum'))
+            tags.add(TRCK(encoding=3, text=str(i + 1)))
+            tags.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='', data=cover))
+            tags.save(path)
+            self.server.share(path)
+        token = self.pair()
+        status, listing = self.request('GET', '/api/files', token)
+        files = json.loads(listing)['files']
+        self.assertEqual((status, len(files)), (200, 5))
+        for i, entry in enumerate(files):
+            status, content = self.request('GET', f"/api/files/{entry['id']}", token)
+            self.assertEqual(status, 200)
+            downloaded = self.dir / f'download-{i}.mp3'
+            downloaded.write_bytes(content)
+            tags = ID3(downloaded)
+            self.assertEqual((str(tags['TIT2']), str(tags['TPE1']), str(tags['TALB']), str(tags['TRCK'])),
+                             (f'Faixa {i}', 'Artista', 'Álbum', str(i + 1)))
+            self.assertEqual(tags.getall('APIC')[0].data, cover)
 
     def test_only_shared_files_can_be_downloaded(self):
         token = self.pair()

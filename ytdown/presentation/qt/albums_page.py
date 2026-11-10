@@ -121,7 +121,7 @@ class AlbumView(QListView):
 class AlbumsPage(QWidget):
     detail_changed = Signal(str)
 
-    def __init__(self, repository, playback, storage, cache, default_cover):
+    def __init__(self, repository, playback, storage, cache, default_cover, send_to_phone=None):
         super().__init__()
         self.playback = playback
         self.model = AlbumModel(repository, storage, cache, default_cover, self)
@@ -170,12 +170,16 @@ class AlbumsPage(QWidget):
         self.play_button = QPushButton("Tocar álbum")
         self.play_button.clicked.connect(self.play_current)
         heading.addWidget(self.play_button)
+        self.send_button = QPushButton("Enviar álbum para o celular")
+        self.send_button.setVisible(send_to_phone is not None and storage is not None)
+        self.send_button.clicked.connect(self.send_current)
+        heading.addWidget(self.send_button)
         detail_layout.addLayout(heading)
         self.table = QTableView()
         self.track_model = TrackTableModel(repository, self)
         self.table.setModel(self.track_model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.track_actions = TrackActions(self.table, playback, storage)
+        self.track_actions = TrackActions(self.table, playback, storage, send_to_phone)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.activated.connect(lambda index: self.playback.play_tracks(self.track_model.tracks, index.row()))
         detail_layout.addWidget(self.table, 1)
@@ -229,6 +233,10 @@ class AlbumsPage(QWidget):
     def play_current(self):
         if self.current_key in self.model.groups:
             self.playback.play_tracks(self.model.groups[self.current_key])
+
+    def send_current(self):
+        if self.current_key in self.model.groups and self.track_actions.send_to_phone is not None:
+            self.track_actions.send_tracks(self.model.groups[self.current_key])
 
     def refresh(self):
         self.model.refresh()

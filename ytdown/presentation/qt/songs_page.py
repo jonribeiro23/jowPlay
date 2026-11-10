@@ -97,7 +97,7 @@ class TrackTableModel(QAbstractTableModel):
 class SongsPage(QWidget):
     """A tabela tem seu próprio viewport: nunca cresce com o número de faixas."""
     def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings,
-                 remove_unavailable=None, storage=None, title="Músicas"):
+                 remove_unavailable=None, storage=None, title="Músicas", send_to_phone=None):
         super().__init__()
         self.setObjectName("page-songs")
         self.playback, self.settings = playback, settings
@@ -119,7 +119,7 @@ class SongsPage(QWidget):
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.track_actions = TrackActions(self.table, playback, storage)
+        self.track_actions = TrackActions(self.table, playback, storage, send_to_phone)
         self.table.setDragEnabled(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().hide()

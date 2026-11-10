@@ -16,12 +16,77 @@ from ytdown.infrastructure.json_settings import JsonSettings
 from ytdown.presentation.qt.albums_page import AlbumsPage
 from ytdown.presentation.qt.groups_page import GroupsPage
 from ytdown.presentation.qt.songs_page import SongsPage
+from ytdown.presentation.qt.send_dialog import PhoneSharing
+from ytdown.application.sharing import SharingSession
+from ytdown.infrastructure.sharing.server import LocalShareServer
+from tests.fakes import FakeDevices
 
 
 class TrackActionsTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = qt_app()
+
+    def test_selected_tracks_reach_shared_dialog_from_all_lists(self):
+        from ytdown.infrastructure.library_storage import FileSystemLibraryStorage
+        with tempfile.TemporaryDirectory() as temp:
+            storage = FileSystemLibraryStorage(Path(temp))
+            repo = InMemoryTrackRepository()
+            for i in range(3):
+                repo.add(Track(f'{i}.mp3', f'Faixa {i}', datetime.now(), artist='Artista', album='Álbum', genre='Gênero', missing=i == 2))
+            storage.absolute('0.mp3').write_bytes(b'audio')
+            storage.absolute('2.mp3').write_bytes(b'audio')
+            sharing = PhoneSharing(lambda changed: LocalShareServer(SharingSession(FakeDevices(), changed), http_port=0, discovery_port=0))
+            playback = Playback(FakeAudioPlayer(), storage)
+            pages = [SongsPage(repo, playback, JsonSettings(Path(temp) / 'settings.json'), storage=storage, send_to_phone=sharing.send),
+                     AlbumsPage(repo, playback, storage, object(), '', send_to_phone=sharing.send),
+                     GroupsPage(repo, playback, 'artist', storage, sharing.send),
+                     GroupsPage(repo, playback, 'genre', storage, sharing.send)]
+            try:
+                for page in pages[1:]:
+                    page.open_index(page.model.index(0, 0))
+                for page in pages:
+                    selection = page.table.selectionModel()
+                    for row in range(3):
+                        selection.select(page.table.model().index(row, 0), QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
+                    with patch('ytdown.presentation.qt.track_actions.QMessageBox.warning') as warning:
+                        menu = page.track_actions.make_menu()
+                        next(a for a in menu.actions() if a.text() == 'Enviar para o celular').trigger()
+                        self.assertIn('Faixa 1', warning.call_args.args[2])
+                        self.assertIn('Faixa 2', warning.call_args.args[2])
+                    self.assertEqual([name for name, _ in sharing.dialog.rows()], ['0.mp3'])
+                self.assertIsNotNone(sharing.dialog)
+            finally:
+                sharing.stop()
+                pages[1].shutdown()
+                for page in pages:
+                    dispose(page)
+
+    def test_album_button_sends_entire_album_and_warns_about_missing(self):
+        from ytdown.infrastructure.library_storage import FileSystemLibraryStorage
+        with tempfile.TemporaryDirectory() as temp:
+            storage = FileSystemLibraryStorage(Path(temp))
+            repo = InMemoryTrackRepository()
+            for i in range(4):
+                repo.add(Track(f'{i}.mp3', f'Faixa {i}', datetime.now(), artist='Artista', album='Álbum',
+                               track_no=i + 1, missing=i == 2))
+            for i in (0, 1, 2):
+                storage.absolute(f'{i}.mp3').write_bytes(b'audio')
+            sharing = PhoneSharing(lambda changed: LocalShareServer(SharingSession(FakeDevices(), changed), http_port=0, discovery_port=0))
+            page = AlbumsPage(repo, Playback(FakeAudioPlayer(), storage), storage, object(), '', sharing.send)
+            try:
+                page.open_index(page.model.index(0, 0))
+                page.table.selectRow(0)
+                with patch('ytdown.presentation.qt.track_actions.QMessageBox.warning') as warning:
+                    page.send_button.click()
+                warning.assert_called_once()
+                self.assertIn('Faixa 2', warning.call_args.args[2])
+                self.assertIn('Faixa 3', warning.call_args.args[2])
+                self.assertEqual([name for name, _ in sharing.dialog.rows()], ['0.mp3', '1.mp3'])
+            finally:
+                sharing.stop()
+                page.shutdown()
+                dispose(page)
 
     def test_queue_actions_in_every_track_list(self):
         repo = InMemoryTrackRepository()

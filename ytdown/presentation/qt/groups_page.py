@@ -42,7 +42,7 @@ class GroupsModel(QAbstractListModel):
 class GroupsPage(QWidget):
     detail_changed = Signal(str)
 
-    def __init__(self, repository, playback, kind, storage=None):
+    def __init__(self, repository, playback, kind, storage=None, send_to_phone=None):
         super().__init__()
         self.repository, self.playback, self.kind = repository, playback, kind
         self.current_key = None
@@ -88,7 +88,7 @@ class GroupsPage(QWidget):
         self.table = QTableView()
         self.table.setModel(self.track_model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.track_actions = TrackActions(self.table, playback, storage)
+        self.track_actions = TrackActions(self.table, playback, storage, send_to_phone)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.activated.connect(lambda index: self.playback.play_tracks(self.track_model.tracks, index.row()))
         detail_layout.addWidget(QLabel("Faixas"))

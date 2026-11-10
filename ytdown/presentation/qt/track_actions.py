@@ -6,12 +6,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QAbstractItemView, QMenu, QMessageBox
 
-from ytdown.domain.errors import LibraryError
+from ytdown.domain.errors import LibraryError, ShareError
 
 
 class TrackActions:
-    def __init__(self, table, playback, storage=None):
+    def __init__(self, table, playback, storage=None, send_to_phone=None):
         self.table, self.playback, self.storage = table, playback, storage
+        self.send_to_phone = send_to_phone
         self.delete_tracks = None
         self.refresh_library = None
         table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -32,6 +33,8 @@ class TrackActions:
         menu.addAction("Tocar", lambda: self.playback.play_tracks(tracks))
         menu.addAction("Tocar em seguida", lambda: self.playback.play_next(tracks))
         menu.addAction("Adicionar à fila", lambda: self.playback.append(tracks))
+        if self.storage is not None and self.send_to_phone is not None:
+            menu.addAction("Enviar para o celular", lambda: self.send_tracks(tracks))
         if self.delete_tracks is not None:
             menu.addAction("Excluir da biblioteca", self.delete_selected)
         if self.storage is not None and sys.platform == "win32" and len(tracks) == 1:
@@ -42,6 +45,26 @@ class TrackActions:
             except (LibraryError, OSError):
                 pass
         return menu
+
+    def send_tracks(self, tracks):
+        paths, missing = [], []
+        for track in tracks:
+            try:
+                path = self.storage.absolute(track.rel_path)
+                if track.missing or not path.is_file():
+                    missing.append(track.title)
+                else:
+                    paths.append(path)
+            except (LibraryError, OSError):
+                missing.append(track.title)
+        if missing:
+            QMessageBox.warning(self.table, "Faixas indisponíveis",
+                                "Não foi possível enviar as faixas indisponíveis:\n" + "\n".join(missing))
+        if paths:
+            try:
+                self.send_to_phone(paths)
+            except ShareError as exc:
+                QMessageBox.warning(self.table, "Enviar para o celular", str(exc))
 
     def delete_selected(self):
         tracks = self.selected_tracks()

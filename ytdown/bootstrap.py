@@ -144,15 +144,15 @@ def build_main_window(library, playback, extract_batch, sharing):
             pages[page] = NowPlayingPage(playback, read_cover, QPixmap(str(asset("default_cover.jpg"))))
         elif page in (PageId.SONGS, PageId.RECENT):
             pages[page] = SongsPage(library.tracks, playback, library.settings, storage=library.storage,
-                                    title=page.title)
+                                    title=page.title, send_to_phone=sharing.send)
             if page is PageId.RECENT:
                 pages[page].set_ids([])
         elif page is PageId.ALBUMS:
             pages[page] = AlbumsPage(library.tracks, playback, library.storage, library.thumbnails,
-                                     asset("default_cover.jpg"))
+                                     asset("default_cover.jpg"), send_to_phone=sharing.send)
         elif page in (PageId.ARTISTS, PageId.GENRES):
             pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre",
-                                     storage=library.storage)
+                                     storage=library.storage, send_to_phone=sharing.send)
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))

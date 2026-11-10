@@ -119,6 +119,10 @@ O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
 
 Com a janela "Enviar para o celular" aberta, você pode continuar extraindo: cada novo áudio enviado entra na lista. O compartilhamento termina quando essa janela é fechada.
 
+Na biblioteca, selecione faixas em Músicas, Recentes ou nos detalhes de um álbum, artista ou gênero e escolha **Enviar para o celular** no menu de contexto. As seleções entram na mesma janela de envio. Faixas marcadas como indisponíveis ou cujos arquivos não estão no disco são ignoradas e informadas em um aviso. A integração com playlists depende da futura interface de playlists.
+
+No detalhe de um álbum, **Enviar álbum para o celular** compartilha todas as suas faixas disponíveis, sem depender da seleção na tabela.
+
 Se o celular não encontrar o PC, digite no app o endereço mostrado nessa janela. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, desative o "isolamento de AP" (ou "isolamento de clientes") no roteador, ou use uma rede que não seja a de convidados.
 
 **Segurança:** o celular só consegue baixar os áudios que você enviou, nunca outros arquivos do PC, e só depois de parear. Porém, a transferência não é criptografada: em uma rede que você não controla, outra pessoa poderia ver os áudios enviados. Use em redes de confiança. Para desfazer todos os pareamentos, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
@@ -151,7 +155,7 @@ A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `deve
 
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
-.\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (não usam a rede)
+.\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (HTTP local, sem serviços externos)
 powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\ytDown
 powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
 ```
