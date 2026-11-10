@@ -91,6 +91,7 @@ def _button(name: str, icon: str, tooltip: str, size: int = BUTTON_SIZE,
 
 class TransportBar(QWidget):
     queue_pane_toggled = Signal(bool)
+    now_playing_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -109,6 +110,7 @@ class TransportBar(QWidget):
         self.cover.setObjectName("nowPlayingCover")
         self.cover.setFixedSize(48, 48)
         self.cover.setAccessibleName("Capa da faixa")
+        self.cover.mouseDoubleClickEvent = lambda event: self.now_playing_requested.emit()
         self.artist = QLabel()
         self.artist.setObjectName("nowPlayingArtist")
 
@@ -156,6 +158,10 @@ class TransportBar(QWidget):
         self.queue_toggle.setCheckable(True)
         self.queue_toggle.setChecked(True)
         self.queue_toggle.toggled.connect(self.queue_pane_toggled)
+        self.now_playing_button = QToolButton()
+        self.now_playing_button.setText("Em reprodução")
+        self.now_playing_button.setToolTip("Abrir Em reprodução")
+        self.now_playing_button.clicked.connect(self.now_playing_requested)
 
         self._build()
 
@@ -302,6 +308,7 @@ class TransportBar(QWidget):
         right.addWidget(self.volume)
         right.addSpacing(theme.METRICS["space_m"])
         right.addWidget(self.queue_toggle)
+        right.addWidget(self.now_playing_button)
 
         controls_row = QHBoxLayout()
         controls_row.addLayout(left, stretch=1)

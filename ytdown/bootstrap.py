@@ -120,6 +120,8 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.songs_page import SongsPage
     from ytdown.presentation.qt.albums_page import AlbumsPage
     from ytdown.presentation.qt.groups_page import GroupsPage
+    from ytdown.presentation.qt.now_playing import NowPlayingPage, CompactPlayer
+    from PySide6.QtGui import QPixmap
     from ytdown.application.library import RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
@@ -127,10 +129,16 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.import_dialog import ImportDialog
 
     pages = {}
+    def read_cover(track):
+        path = library.thumbnails.get_or_create(library.storage.absolute(track.rel_path))
+        return path.read_bytes() if path else None
+
     remove_unavailable_case = RemoveUnavailableTracks(library.storage, library.tracks)
 
     def page_factory(page: PageId):
-        if page in (PageId.SONGS, PageId.RECENT):
+        if page is PageId.NOW_PLAYING:
+            pages[page] = NowPlayingPage(playback, read_cover, QPixmap(str(asset("default_cover.jpg"))))
+        elif page in (PageId.SONGS, PageId.RECENT):
             pages[page] = SongsPage(library.tracks, playback, library.settings, storage=library.storage,
                                     title=page.title)
             if page is PageId.RECENT:
@@ -149,6 +157,9 @@ def build_main_window(library, playback, extract_batch, sharing):
         return pages[page]
 
     window = MainWindow(page_factory, settings=library.settings)
+    window.compact_player = CompactPlayer(playback, pages[PageId.NOW_PLAYING], library.settings, window)
+    pages[PageId.NOW_PLAYING].compact_requested.connect(window.compact_player.show)
+    window.closing.connect(window.compact_player.shutdown)
     window.navigation.set_counts(library.tracks)
     pages[PageId.SONGS].model.modelReset.connect(lambda: window.navigation.set_counts(library.tracks))
     pages[PageId.SONGS].model.modelReset.connect(pages[PageId.ALBUMS].refresh)
@@ -167,8 +178,7 @@ def build_main_window(library, playback, extract_batch, sharing):
 
     window.transport.bind(
         playback,
-        read_cover=lambda track: (path.read_bytes() if (path := library.thumbnails.get_or_create(
-            library.storage.absolute(track.rel_path))) else None),
+        read_cover=read_cover,
         default_cover=QPixmap(str(asset("default_cover.jpg"))),
     )
     window.closing.connect(window.transport.shutdown)

@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.navigation.page_selected.connect(self.show_page)
+        self.transport.now_playing_requested.connect(lambda: self.show_page(PageId.NOW_PLAYING))
         self.transport.queue_pane_toggled.connect(self.play_queue.setVisible)
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.transport.queue_toggle.toggle)
         saved = settings.get(LAST_PAGE_KEY) if settings is not None else None

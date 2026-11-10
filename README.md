@@ -1,5 +1,9 @@
 # ytDown
 
+**Em reprodução** mostra capa, informações da faixa e próximas faixas. Abra pela árvore,
+pelo botão da barra inferior ou com duplo clique na miniatura. O botão **Modo compacto**
+abre uma janela sempre no topo com controles de reprodução; sua posição é lembrada.
+
 Nas listas de faixas de Músicas (inclusive filtrada pela busca), álbum, artista e gênero,
 selecione uma ou mais linhas e clique com o botão direito para tocar a seleção, tocar em
 seguida ou adicionar à fila. A ordem segue as linhas exibidas, inclusive entradas repetidas.

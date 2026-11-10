@@ -45,7 +45,7 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual([library.child(i).text(0) for i in range(library.childCount())],
                          ["Músicas", "Adicionadas recentemente", "Artistas", "Álbuns", "Gêneros"])
         self.assertEqual([tree.topLevelItem(i).text(0) for i in range(1, tree.topLevelItemCount())],
-                         ["Playlists", "Extrair"])
+                         ["Em reprodução", "Playlists", "Extrair"])
 
     def test_opens_on_the_first_page(self):
         self.assertEqual(self.window.current_page(), FIRST_PAGE)

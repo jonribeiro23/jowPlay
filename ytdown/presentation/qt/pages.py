@@ -11,6 +11,7 @@ from ytdown.presentation.qt import theme
 
 
 class PageId(Enum):
+    NOW_PLAYING = "Em reprodução"
     SONGS = "Músicas"
     RECENT = "Adicionadas recentemente"
     ARTISTS = "Artistas"

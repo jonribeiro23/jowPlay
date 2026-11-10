@@ -251,6 +251,14 @@ As capas são solicitadas sob demanda pela grade e resolvidas em um executor de 
 `GroupsPage` usa os resumos do domínio e consultas do repositório para agrupar e filtrar artistas e gêneros. A busca seleciona grupos que contenham alguma faixa correspondente; detalhes e contagens incluem todo o grupo. O refresh da página de músicas também atualiza os grupos após alterações da biblioteca.
 # Ações nas listas de faixas
 
+## Em reprodução
+
+`NowPlayingPage` e `CompactPlayer` observam o mesmo `Playback` da barra e da fila.
+A página consulta `upcoming()` e carrega capas fora da interface, descartando resultados
+de faixas anteriores. A janela compacta compartilha a capa e os comandos de reprodução;
+sua posição é salva em `playback.compact_position` nas configurações compartilhadas.
+No fechamento, os listeners são removidos e a leitura pendente é invalidada.
+
 As tabelas de Músicas, detalhes de álbum, artista e gênero compartilham `TrackActions`.
 A seleção múltipla é lida por posição no modelo, preservando a ordem visual e ocorrências
 com o mesmo ID. Tocar substitui a fila; tocar em seguida e adicionar à fila usam os

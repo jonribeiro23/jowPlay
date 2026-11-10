@@ -62,6 +62,61 @@ class TransportTests(unittest.TestCase):
         self.songs.table.setCurrentIndex(self.songs.model.index(0, 0))
         QTest.keyClick(self.songs.table, Qt.Key.Key_Return)
 
+    def test_now_playing_access_history_and_compact(self):
+        page = self.window.page(PageId.NOW_PLAYING)
+        compact = self.window.compact_player
+        self.window.navigation.select(PageId.NOW_PLAYING)
+        self.assertEqual(self.window.current_page(), PageId.NOW_PLAYING)
+        self.window.back_button.click()
+        self.assertEqual(self.window.current_page(), PageId.SONGS)
+        self.bar.now_playing_button.click()
+        self.assertEqual(self.window.current_page(), PageId.NOW_PLAYING)
+        self.window.back_button.click()
+        QTest.mouseDClick(self.bar.cover, Qt.MouseButton.LeftButton)
+        self.assertEqual(self.window.current_page(), PageId.NOW_PLAYING)
+        self.play_from_songs()
+        self.assertEqual(page.title.text(), 'Título 0')
+        self.assertEqual(page.upcoming.count(), 2)
+        page.compact_button.click()
+        self.assertTrue(compact.isVisible())
+        self.assertTrue(compact.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        compact.next.click()
+        self.assertEqual(page.title.text(), 'Título 1')
+        self.assertEqual(compact.title.text(), 'Título 1')
+        compact.play.click()
+        self.assertEqual(self.player.state, PlayerState.PAUSED)
+        self.playback.play_pause()
+        self.assertEqual(compact.play.text(), '⏸')
+        compact.move(123, 234)
+        compact.close()
+        self.assertEqual(self.window.settings.get(compact.POSITION_KEY), [123, 234])
+        from ytdown.presentation.qt.now_playing import CompactPlayer
+        other = CompactPlayer(self.playback, page, self.window.settings, self.window)
+        self.assertEqual((other.x(), other.y()), (123, 234))
+        other.shutdown()
+        other.deleteLater()
+
+    def test_now_playing_cover_loading_is_async_and_shutdown_unsubscribes(self):
+        from ytdown.presentation.qt.now_playing import NowPlayingPage
+        started, release = threading.Event(), threading.Event()
+        def slow_cover(track):
+            started.set()
+            release.wait(3)
+            return cover_bytes()
+        page = NowPlayingPage(self.playback, slow_cover, QPixmap())
+        try:
+            tracks = self.songs.model.tracks
+            self.playback.play_tracks(tracks)
+            self.assertTrue(started.wait(1))
+            self.playback.next()
+            self.assertEqual(page.title.text(), tracks[1].title)
+            listener = page._listener
+            page.shutdown()
+            self.assertNotIn(listener, self.playback._listeners)
+        finally:
+            release.set()
+            page.deleteLater()
+
     def test_songs_transport_and_external_playback(self):
         self.assertFalse(self.bar.cover.pixmap().isNull())
         self.play_from_songs()
