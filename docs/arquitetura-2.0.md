@@ -247,3 +247,12 @@ As capas são solicitadas sob demanda pela grade e resolvidas em um executor de 
 # Navegação por artistas e gêneros
 
 `GroupsPage` usa os resumos do domínio e consultas do repositório para agrupar e filtrar artistas e gêneros. A busca seleciona grupos que contenham alguma faixa correspondente; detalhes e contagens incluem todo o grupo. O refresh da página de músicas também atualiza os grupos após alterações da biblioteca.
+# Ações nas listas de faixas
+
+As tabelas de Músicas, detalhes de álbum, artista e gênero compartilham `TrackActions`.
+A seleção múltipla é lida por posição no modelo, preservando a ordem visual e ocorrências
+com o mesmo ID. Tocar substitui a fila; tocar em seguida e adicionar à fila usam os
+serviços de `Playback`. A busca em Músicas atua sobre a mesma tabela. No Windows, o menu
+oferece mostrar no Explorer somente para uma faixa cujo arquivo existe. Playlist,
+propriedades, envio e exclusão de faixas não estão integrados ao menu; Delete e Alt+Enter
+permanecem sem essas ações. Enter e duplo clique mantêm a reprodução da lista visível.

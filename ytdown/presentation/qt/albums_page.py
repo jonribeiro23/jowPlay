@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QHBoxLayout, QLabel
 from ytdown.domain.library import album_order, summarize_albums
 from ytdown.domain.text import search_key
 from ytdown.presentation.qt.songs_page import TrackTableModel
+from ytdown.presentation.qt.track_actions import TrackActions
 
 
 class AlbumModel(QAbstractListModel):
@@ -174,6 +175,7 @@ class AlbumsPage(QWidget):
         self.track_model = TrackTableModel(repository, self)
         self.table.setModel(self.track_model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.track_actions = TrackActions(self.table, playback, storage)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.activated.connect(lambda index: self.playback.play_tracks(self.track_model.tracks, index.row()))
         detail_layout.addWidget(self.table, 1)

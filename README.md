@@ -1,5 +1,13 @@
 # ytDown
 
+Nas listas de faixas de Músicas (inclusive filtrada pela busca), álbum, artista e gênero,
+selecione uma ou mais linhas e clique com o botão direito para tocar a seleção, tocar em
+seguida ou adicionar à fila. A ordem segue as linhas exibidas, inclusive entradas repetidas.
+No Windows, uma faixa cujo arquivo existe também oferece **Mostrar no Explorer**. Enter
+mantém a reprodução a partir da linha atual na lista visível. As ações de playlist,
+propriedades, envio e exclusão de faixas, bem como os atalhos Delete e Alt+Enter para essas
+ações, ainda não estão disponíveis nesse menu.
+
 A navegação reúne Músicas, Artistas, Álbuns e Gêneros em Biblioteca, com contagens atualizadas após alterações; Playlists e Extrair ficam na raiz. As setas acima do conteúdo percorrem o histórico e o caminho indica a seção atual. A última seção é restaurada ao abrir o aplicativo. As páginas ainda não implementadas permanecem reservadas para versões futuras.
 
 ### Importar extrações anteriores à 2.0

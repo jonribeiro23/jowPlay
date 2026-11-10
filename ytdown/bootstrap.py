@@ -131,12 +131,13 @@ def build_main_window(library, playback, extract_batch, sharing):
 
     def page_factory(page: PageId):
         if page is PageId.SONGS:
-            pages[page] = SongsPage(library.tracks, playback, library.settings)
+            pages[page] = SongsPage(library.tracks, playback, library.settings, storage=library.storage)
         elif page is PageId.ALBUMS:
             pages[page] = AlbumsPage(library.tracks, playback, library.storage, library.thumbnails,
                                      asset("default_cover.jpg"))
         elif page in (PageId.ARTISTS, PageId.GENRES):
-            pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre")
+            pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre",
+                                     storage=library.storage)
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))

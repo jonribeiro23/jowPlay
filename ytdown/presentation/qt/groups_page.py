@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListView
 
 from ytdown.domain.library import TrackQuery, summarize_albums, summarize_artists, summarize_genres
 from ytdown.presentation.qt.songs_page import TrackTableModel
+from ytdown.presentation.qt.track_actions import TrackActions
 
 
 class GroupsModel(QAbstractListModel):
@@ -41,7 +42,7 @@ class GroupsModel(QAbstractListModel):
 class GroupsPage(QWidget):
     detail_changed = Signal(str)
 
-    def __init__(self, repository, playback, kind):
+    def __init__(self, repository, playback, kind, storage=None):
         super().__init__()
         self.repository, self.playback, self.kind = repository, playback, kind
         self.current_key = None
@@ -87,6 +88,7 @@ class GroupsPage(QWidget):
         self.table = QTableView()
         self.table.setModel(self.track_model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.track_actions = TrackActions(self.table, playback, storage)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.activated.connect(lambda index: self.playback.play_tracks(self.track_model.tracks, index.row()))
         detail_layout.addWidget(QLabel("Faixas"))

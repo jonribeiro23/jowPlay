@@ -8,6 +8,7 @@ from ytdown.application.ports import Settings, TrackRepository
 from ytdown.application.playback import Playback
 from ytdown.domain.library import SortField, TrackQuery
 from ytdown.presentation.qt import theme
+from ytdown.presentation.qt.track_actions import TrackActions
 
 COLUMNS = (
     ("Título", SortField.TITLE), ("Artista", SortField.ARTIST),
@@ -88,7 +89,7 @@ class TrackTableModel(QAbstractTableModel):
 class SongsPage(QWidget):
     """A tabela tem seu próprio viewport: nunca cresce com o número de faixas."""
     def __init__(self, repository: TrackRepository, playback: Playback, settings: Settings,
-                 remove_unavailable=None):
+                 remove_unavailable=None, storage=None):
         super().__init__()
         self.setObjectName("page-songs")
         self.playback, self.settings = playback, settings
@@ -110,6 +111,7 @@ class SongsPage(QWidget):
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.track_actions = TrackActions(self.table, playback, storage)
         self.table.setDragEnabled(True)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().hide()
