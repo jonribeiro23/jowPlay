@@ -9,6 +9,7 @@ from pathlib import Path
 from threading import Event
 import shutil
 import tempfile
+import os
 
 from ytdown.application.ports import LibraryStorage, MetadataReader, Settings, TrackRepository, ThumbnailCache
 from ytdown.domain.errors import ExtractionError, LibraryError, UnreadableAudio
@@ -19,6 +20,87 @@ from ytdown.domain.text import search_key
 from ytdown.domain.urls import canonical_video_url
 
 LIBRARY_FOLDER_KEY = "library_folder"
+
+
+class EditTrackProperties:
+    """Edita uma cópia e mantém uma cópia permanente para recuperação."""
+
+    def __init__(self, storage, tracks, tags):
+        self.storage, self.tracks, self.tags = storage, tracks, tags
+
+    def __call__(self, track_id, changes):
+        allowed = {"title", "artist", "album", "genre", "year", "track_no", "cover"}
+        if changes.keys() - allowed:
+            raise LibraryError("Campo de propriedade inválido.")
+        track = self.tracks.get(track_id)
+        if track is None:
+            raise LibraryError("Faixa não encontrada.")
+        values = dict(changes)
+        for field in ("title", "artist", "album", "genre"):
+            if field in values:
+                if not isinstance(values[field], str):
+                    raise LibraryError("Valor de texto inválido.")
+                values[field] = values[field].strip()
+        if not values.get("title", track.title):
+            raise LibraryError("Informe o nome da faixa.")
+        for field in ("year", "track_no"):
+            if field in values and values[field] is not None and (type(values[field]) is not int or not 1 <= values[field] <= 9999):
+                raise LibraryError("Ano e número da faixa devem estar entre 1 e 9999.")
+        if "cover" in values and values["cover"] is not None and not isinstance(values["cover"], bytes):
+            raise LibraryError("Capa inválida.")
+        values = {key: value for key, value in values.items() if key == "cover" or getattr(track, key) != value}
+        if not values:
+            return track
+        source = self.storage.absolute(track.rel_path)
+        if not self.storage.is_available() or not source.is_file():
+            raise LibraryError("Arquivo ou pasta da biblioteca indisponível.")
+        updated = replace(track, **{key: value for key, value in values.items() if key != "cover"})
+        wanted = library_path(updated.artist, updated.album, updated.title, updated.track_no,
+                              source.suffix, self.storage.max_relative_length())
+        recovery_root = self.storage.root / ".ytdown-recovery"
+        try:
+            recovery_root.mkdir(parents=True, exist_ok=True)
+            temp = Path(tempfile.mkdtemp(prefix="edicao-", dir=recovery_root))
+        except OSError as exc:
+            raise LibraryError(f"Não foi possível preparar a edição: {exc}") from exc
+        backup, edited = temp / ("original" + source.suffix), temp / ("editado" + source.suffix)
+        changed_original = False
+        placed = None
+        try:
+            shutil.copy2(source, backup)
+            (temp / "caminho-original.txt").write_text(track.rel_path, encoding="utf-8")
+            shutil.copy2(source, edited)
+            self.tags.update(edited, values)
+            # A cópia editada está pronta antes de tocar no original.
+            if os.path.normcase(str(source)) == os.path.normcase(str(self.storage.absolute(wanted))):
+                os.replace(edited, source)
+                changed_original = True
+                placed = track.rel_path
+            else:
+                placed = self.storage.place(edited, wanted)
+                source.unlink()
+                changed_original = True
+            updated = replace(updated, rel_path=placed, missing=False)
+            self.tracks.update_if_unchanged(track, updated)
+        except Exception as exc:
+            try:
+                if changed_original:
+                    # Copiar para outro temporário preserva o backup mesmo se a restauração falhar.
+                    restore = temp / ("restaurar" + source.suffix)
+                    shutil.copy2(backup, restore)
+                    source.parent.mkdir(parents=True, exist_ok=True)
+                    os.replace(restore, source)
+                if placed is not None and placed != track.rel_path:
+                    self.storage.discard(placed)
+            except Exception as restore_error:
+                raise LibraryError(f"{exc}; recuperação necessária: original em {backup}. {restore_error}") from exc
+            raise LibraryError(f"Não foi possível editar a faixa: {exc}. Cópia de recuperação: {backup}") from exc
+        finally:
+            try:
+                edited.unlink(missing_ok=True)
+            except OSError:
+                pass  # A cópia de recuperação permanece disponível, mesmo se a limpeza falhar.
+        return updated
 
 
 class DeleteTracks:

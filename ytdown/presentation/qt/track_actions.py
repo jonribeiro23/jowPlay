@@ -13,6 +13,8 @@ class TrackActions:
     def __init__(self, table, playback, storage=None, send_to_phone=None):
         self.table, self.playback, self.storage = table, playback, storage
         self.send_to_phone = send_to_phone
+        self.edit_properties = None
+        self.cover_loader = None
         self.delete_tracks = None
         self.refresh_library = None
         self.playlist_navigation = None
@@ -21,6 +23,10 @@ class TrackActions:
         table.customContextMenuRequested.connect(self.open_menu)
         self.shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), table)
         self.shortcut.activated.connect(self.delete_selected)
+        self.properties_shortcut = QShortcut(QKeySequence("Alt+Return"), table)
+        self.properties_shortcut.activated.connect(self.show_properties)
+        self.properties_enter_shortcut = QShortcut(QKeySequence("Alt+Enter"), table)
+        self.properties_enter_shortcut.activated.connect(self.show_properties)
 
     def selected_tracks(self):
         rows = sorted(index.row() for index in self.table.selectionModel().selectedRows())
@@ -42,6 +48,8 @@ class TrackActions:
             submenu.setEnabled(bool(submenu.actions()))
         if self.storage is not None and self.send_to_phone is not None:
             menu.addAction("Enviar para o celular", lambda: self.send_tracks(tracks))
+        if self.edit_properties is not None:
+            menu.addAction("Propriedades", self.show_properties)
         if self.delete_tracks is not None:
             menu.addAction("Excluir da biblioteca", self.delete_selected)
         if self.storage is not None and sys.platform == "win32" and len(tracks) == 1:
@@ -52,6 +60,19 @@ class TrackActions:
             except (LibraryError, OSError):
                 pass
         return menu
+
+    def show_properties(self):
+        tracks = self.selected_tracks()
+        if not tracks or self.edit_properties is None:
+            return
+        from PySide6.QtWidgets import QDialog
+        from ytdown.presentation.qt.properties_dialog import PropertiesDialog
+        dialog = PropertiesDialog(tracks, self.edit_properties, self.table, self.cover_loader)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            for track in dialog.tracks:
+                self.playback.update_track(track)
+            if dialog.tracks and self.refresh_library:
+                self.refresh_library()
 
     def send_tracks(self, tracks):
         paths, missing = [], []

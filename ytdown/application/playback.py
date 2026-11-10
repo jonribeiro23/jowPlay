@@ -83,6 +83,15 @@ class Playback:
             return self._loaded_track
         return queued
 
+    def update_track(self, track: Track) -> None:
+        self._queue.update_items(lambda item: item.id == track.id, track)
+        if self._loaded_track is not None and self._loaded_track.id == track.id:
+            self._loaded_track = track
+            self._loaded_queue_track = self._queue.current
+        self._notify_queue()
+        if self.current is not None and self.current.id == track.id:
+            self._notify(lambda listener: listener.on_track_changed(self.current))
+
     @property
     def current_index(self) -> int | None:
         return self._queue.current_index

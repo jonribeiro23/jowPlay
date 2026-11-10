@@ -128,6 +128,16 @@ class MutagenTagWriterTests(unittest.TestCase):
                 self.writer.update(path, {"artist": "Outro", "year": None})
                 self.assert_tags(path, replace(self.full, artist="Outro", year=None))
 
+    def test_selective_m4a_track_number_keeps_total(self):
+        path = self.make_audio("m4a")
+        self.writer.write(path, self.full)
+        audio = MP4(path)
+        audio.tags["trkn"] = [(7, 12)]
+        audio.save()
+        self.writer.update(path, {"track_no": 8})
+        self.assertEqual(MP4(path).tags["trkn"], [(8, 12)])
+        self.assertEqual(bytes(MP4(path).tags[MP4_SOURCE_KEY][0]).decode(), self.full.source_url)
+
     def test_selective_cover_removal_preserves_source(self):
         for extension in FORMATS:
             with self.subTest(extension=extension):

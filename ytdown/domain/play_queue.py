@@ -77,6 +77,11 @@ class PlayQueue(Generic[T]):
     def playback_order(self) -> list[int]:
         return [self._entries.index(entry) for entry in self._order]
 
+    def update_items(self, predicate, replacement: T) -> None:
+        for entry in self._entries:
+            if predicate(entry.item):
+                entry.item = replacement
+
     def restore(self, items: Iterable[T], current: int | None, shuffle: bool,
                 repeat: RepeatMode, order: list[int] | None = None) -> None:
         self._entries = [_Entry(item) for item in items]

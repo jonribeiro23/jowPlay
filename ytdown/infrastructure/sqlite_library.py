@@ -292,6 +292,17 @@ class SqliteTrackRepository:
             raise KeyError(track.id)
 
     @_locked
+    def update_if_unchanged(self, expected: Track, updated: Track) -> None:
+        """Atualiza apenas se nenhuma outra operação mudou a faixa desde a leitura."""
+        with self._db:
+            self._db.execute("BEGIN IMMEDIATE")
+            if self.get(expected.id) != expected:
+                raise LibraryError("A faixa foi alterada por outra operação. Tente novamente.")
+            values = _values(updated)
+            assignments = ", ".join(f"{name} = :{name}" for name in values)
+            self._db.execute(f"UPDATE tracks SET {assignments} WHERE id = :id", {**values, "id": updated.id})
+
+    @_locked
     def record_play(self, track_id: int, played_at: datetime) -> Track | None:
         with self._db:
             cursor = self._db.execute(

@@ -200,7 +200,9 @@ class MutagenTagWriter:
                     elif name == "cover":
                         audio.tags[keys[name]] = [MP4Cover(value, imageformat=MP4Cover.FORMAT_JPEG)]
                     elif name == "track_no":
-                        audio.tags[keys[name]] = [(value, 0)]
+                        previous = audio.tags.get(keys[name], [])
+                        total = previous[0][1] if previous else 0
+                        audio.tags[keys[name]] = [(value, total)]
                     else:
                         audio.tags[keys[name]] = [str(value)]
                 audio.save()

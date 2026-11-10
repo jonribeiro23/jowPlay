@@ -133,7 +133,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.playlists_page import PlaylistsPage
     from ytdown.presentation.qt.now_playing import NowPlayingPage, CompactPlayer
     from PySide6.QtGui import QPixmap
-    from ytdown.application.library import DeleteTracks, RemoveUnavailableTracks
+    from ytdown.application.library import DeleteTracks, EditTrackProperties, RemoveUnavailableTracks
 
     from ytdown.application.importing import ImportAudios
     from ytdown.infrastructure.import_files import FileSystemImportFiles
@@ -217,7 +217,10 @@ def build_main_window(library, playback, extract_batch, sharing):
     pages[PageId.EXTRACT].extraction_finished.connect(pages[PageId.SONGS].refresh)
     pages[PageId.SONGS].library_refreshed.connect(pages[PageId.RECENT].refresh)
     delete_tracks = DeleteTracks(library.storage, library.tracks, playback)
+    edit_properties = EditTrackProperties(library.storage, library.tracks, MutagenTagWriter())
     for page in (PageId.SONGS, PageId.RECENT, PageId.ALBUMS, PageId.ARTISTS, PageId.GENRES):
+        pages[page].track_actions.edit_properties = edit_properties
+        pages[page].track_actions.cover_loader = PillowCoverLoader(asset("default_cover.jpg"))
         pages[page].track_actions.delete_tracks = delete_tracks
         pages[page].track_actions.refresh_library = pages[PageId.SONGS].refresh
         if library.playlists is not None:
