@@ -1,5 +1,8 @@
 """Janela principal em Qt, testada em modo offscreen."""
 
+import subprocess
+import sys
+import textwrap
 import unittest
 import tempfile
 from pathlib import Path
@@ -131,6 +134,55 @@ class MainWindowTests(unittest.TestCase):
         after = self.window.splitter.sizes()
         self.assertEqual((after[0], after[2]), (before[0], before[2]))
         self.assertEqual(after[1], before[1] + 300)
+
+
+# Roda com app.exec() de verdade, num processo separado: se o app não encerrar, o teste falha
+# por tempo em vez de travar a suíte.
+QUIT_SCRIPT = textwrap.dedent("""
+    import os, sys
+    os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication, QLabel, QWidget
+    from ytdown.presentation.qt.main_window import MainWindow
+
+    class Busy(QWidget):
+        calls = 0
+        def shutdown(self, retry=None):
+            # Como a barra de reprodução esperando a thread das capas: na 1a vez pede para esperar.
+            Busy.calls += 1
+            if Busy.calls == 1 and sys.argv[1] == "busy":
+                QTimer.singleShot(25, retry)
+                return False
+            return True
+
+    app = QApplication([])
+    window = MainWindow(lambda page: Busy())
+    window.show()
+    if sys.argv[2] == "other-window":
+        other = QLabel("janela de envio")  # Como "Enviar para o celular": outra janela visível.
+        other.show()
+    QTimer.singleShot(200, window.close)
+    code = app.exec()
+    print("calls", Busy.calls)
+    sys.exit(code)
+""")
+
+
+class QuitTests(unittest.TestCase):
+    def run_app(self, *args):
+        root = Path(__file__).resolve().parents[2]
+        return subprocess.run([sys.executable, "-c", QUIT_SCRIPT, *args], cwd=root, timeout=30,
+                              capture_output=True, text=True)
+
+    def test_closing_after_waiting_for_a_page_ends_the_app(self):
+        result = self.run_app("busy", "alone")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = int(result.stdout.split()[-1])
+        self.assertGreater(calls, 1)  # Esperou a página, perguntou de novo e então fechou.
+
+    def test_closing_the_main_window_ends_the_app_even_with_another_window_open(self):
+        result = self.run_app("idle", "other-window")
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

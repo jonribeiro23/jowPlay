@@ -40,6 +40,25 @@ class Message:
     tone: Tone = Tone.NEUTRAL
 
 
+def count(n: int, singular: str, plural: str | None = None) -> str:
+    """"1 faixa", "2 faixas", "0 faixas"."""
+    return f"{n} {singular if n == 1 else (plural or singular + 's')}"
+
+
+def tracks_count(n: int) -> str:
+    return count(n, "faixa")
+
+
+def albums_count(n: int) -> str:
+    return count(n, "álbum", "álbuns")
+
+
+def delete_tracks_question(n: int) -> str:
+    if n == 1:
+        return "Enviar 1 faixa para a Lixeira e removê-la da biblioteca?"
+    return f"Enviar {n} faixas para a Lixeira e removê-las da biblioteca?"
+
+
 def progress_text(progress: Progress, audio_format: AudioFormat) -> str:
     match progress.stage:
         case Stage.STARTING:

@@ -7,6 +7,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QAbstractItemView, QMenu, QMessageBox
 
 from ytdown.domain.errors import LibraryError, ShareError
+from ytdown.presentation import texts
 
 
 def send_tracks_to_phone(parent, storage, send_to_phone, tracks):
@@ -107,7 +108,7 @@ class TrackActions:
         if not count:
             return
         answer = QMessageBox.question(self.table, "Excluir faixas",
-                                      f"Enviar {count} faixa(s) para a Lixeira e removê-las da biblioteca?",
+                                      texts.delete_tracks_question(count),
                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                       QMessageBox.StandardButton.No)
         if answer != QMessageBox.StandardButton.Yes:

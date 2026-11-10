@@ -1,89 +1,42 @@
 # ytDown
 
-### Área de trabalho
+Aplicativo para Windows 10 e 11 que extrai o áudio de vídeos do YouTube, guarda tudo numa biblioteca organizada e toca as músicas num player inspirado no Windows Media Player 7. Um app para Android recebe os áudios pela rede local.
 
-Ao fechar a janela, o ytDown guarda volume, mudo, aleatório, repetição, fila e posição,
-além da geometria, larguras dos painéis, página e preferências das colunas. Na próxima
-abertura a faixa é carregada sem iniciar a reprodução; pressione Play para continuar.
-Duplicatas e a ordem de reprodução do aleatório são preservadas. Faixas removidas do
-índice ou cujos arquivos estejam ausentes são omitidas da fila restaurada; se a faixa
-atual estiver indisponível, nenhuma faixa é iniciada automaticamente. Configurações
-inválidas são ignoradas, e as demais preferências permanecem no mesmo arquivo JSON.
-O salvamento acontece no fechamento normal da janela; uma interrupção abrupta pode
-perder as alterações da sessão.
+## Instalação
 
-**Em reprodução** mostra capa, informações da faixa e próximas faixas. Abra pela árvore,
-pelo botão da barra inferior ou com duplo clique na miniatura. O botão **Modo compacto**
-abre uma janela sempre no topo com controles de reprodução; sua posição é lembrada.
+1. Baixe o `ytDown-windows.zip` do Release e extraia o conteúdo para uma pasta.
+2. Abra `ytDown\ytDown.exe`. Não é preciso instalar Python nem ffmpeg.
 
-Na janela principal, Espaço alterna tocar/pausar, Ctrl+Esquerda e Ctrl+Direita passam à faixa anterior ou próxima, e Ctrl+Cima e Ctrl+Baixo ajustam o volume em 5 pontos. Ctrl+M alterna mudo, Ctrl+S alterna aleatório e Ctrl+T muda o modo de repetição. Os atalhos de reprodução não interferem nos campos de texto. Controles globais de mídia e painel SMTC do Windows ainda não foram implementados ou verificados.
-
-Nas listas de faixas de Músicas (inclusive filtrada pela busca), álbum, artista e gênero,
-selecione uma ou mais linhas e clique com o botão direito para tocar a seleção, tocar em
-seguida ou adicionar à fila. A ordem segue as linhas exibidas, inclusive entradas repetidas.
-No Windows, uma faixa cujo arquivo existe também oferece **Mostrar no Explorer**. Enter
-mantém a reprodução a partir da linha atual na lista visível. O menu também oferece
-playlist, envio e exclusão da biblioteca quando os serviços estão disponíveis. A edição
-de propriedades e o atalho Alt+Enter ainda não estão disponíveis.
-
-A navegação reúne Músicas, Artistas, Álbuns e Gêneros em Biblioteca, com contagens atualizadas após alterações; Playlists e Extrair ficam na raiz. As setas acima do conteúdo percorrem o histórico e o caminho indica a seção atual. A última seção é restaurada ao abrir o aplicativo. As páginas ainda não implementadas permanecem reservadas para versões futuras.
-
-### Importar extrações anteriores à 2.0
-
-Use **Importar áudios extraídos...** na barra lateral. Adicione uma ou mais pastas
-com extrações antigas e clique em **Importar**. O app procura MP3, M4A, FLAC e WAV
-também nas subpastas e copia os arquivos para a biblioteca gerenciada, preservando
-os originais, etiquetas e capas. Não há busca automática pela coleção do computador.
-
-Na página Músicas, use a busca no topo (Ctrl+F) para filtrar título, artista,
-álbum e gênero sem diferenciar acentos ou maiúsculas; Esc limpa o campo. As
-palavras podem aparecer em campos diferentes. A busca é aplicada após uma breve
-pausa na digitação e preserva a ordenação e a fila de reprodução. Em Álbuns, ela
-filtra nome e artista. A grade permite ordenar por álbum, artista, ano ou data de
-inclusão (primeira faixa, mais recentes primeiro). Selecione uma capa e clique em
-**Abrir álbum** ou pressione Enter para ver as faixas e tocar o álbum; duplo clique
-na capa inicia diretamente a reprodução. Capas ausentes usam a imagem padrão.
-Artistas e Gêneros agrupam as faixas e permitem abrir os respectivos detalhes.
-Arquivos antigos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
-
-Duplicatas são ignoradas pela URL canônica de origem ou pelo SHA-256 dos bytes,
-contra a biblioteca e o próprio lote. A pasta gerenciada, links e junções não são
-percorridos. Ao cancelar, as faixas já importadas permanecem e a cópia em andamento
-é descartada. O resumo mostra importadas, duplicadas e erros, com detalhes roláveis.
-Se um arquivo existente não puder ser lido para verificar duplicatas, a importação
-encerra antes de copiar; arquivos ausentes ainda são comparados por URL.
-Extração, importação e mudança da pasta não podem ocorrer simultaneamente.
-
-Aplicativo para Windows 10 e 11 que extrai o áudio de um vídeo do YouTube e o salva no computador.
+O `ytDown.exe` precisa da pasta `_internal` ao lado dele: para mover o app, leve a pasta `ytDown` inteira. Como o executável não tem assinatura digital, o Windows SmartScreen pode avisar "O Windows protegeu o computador" na primeira execução; clique em **Mais informações** e em **Executar assim mesmo**.
 
 ## Como usar
 
-1. Abra `dist\ytDown\ytDown.exe` e clique em **Extrair**, na árvore à esquerda.
+A janela tem a árvore de navegação à esquerda, o conteúdo no centro, a fila de reprodução à direita e a barra de reprodução embaixo. Na árvore, **Biblioteca** reúne Músicas, Artistas, Álbuns, Gêneros e Adicionadas recentemente; **Em reprodução**, **Playlists** e **Extrair** ficam na raiz. As setas acima do conteúdo percorrem o histórico, o caminho indica a seção atual e os números ao lado de cada item mostram as contagens.
+
+### Extrair
+
+1. Clique em **Extrair** na árvore.
 2. Cole a URL do vídeo. Para extrair vários de uma vez, coloque uma URL por linha.
 3. Escolha o formato (MP3, M4A, FLAC ou WAV) e, se quiser, preencha as informações do áudio.
 4. Clique em **Extrair áudio** (ou tecle **Ctrl+Enter** na caixa de URLs).
 
-### A biblioteca
+Vários vídeos de uma vez:
 
-Todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`. O índice da biblioteca fica em `%APPDATA%\ytDown\library.db`.
-
-- Para usar outra pasta, clique em **Opções** (embaixo da árvore) e em **Alterar...**. Os áudios que já estão na biblioteca vão junto para a pasta nova.
-- Ao extrair de novo um vídeo que já está na biblioteca (mesmo que o link esteja em outro formato), o app pergunta: **Substituir** (o áudio novo fica no lugar do antigo, que vai para a Lixeira), **Manter os dois** ou **Cancelar**.
-- Um nome de arquivo já ocupado ganha " (1)"; nenhum arquivo é substituído sem você pedir.
-- **Mostrar arquivo** abre a pasta do áudio no Explorador.
-
-### Vários vídeos de uma vez
-
-Coloque uma URL por linha na caixa de URLs; o botão **Colar** acrescenta o que está na área de transferência ao fim da lista. Enter pula de linha, e **Ctrl+Enter** inicia a extração.
-
+- O botão **Colar** acrescenta o que está na área de transferência ao fim da lista. Enter pula de linha.
 - Os vídeos são extraídos um de cada vez, na ordem da lista. Linhas em branco e URLs repetidas são ignoradas.
 - Se algum vídeo falhar, os outros continuam. A lista mostra a situação de cada vídeo, e o resumo no fim explica cada falha.
 - **Cancelar** interrompe o vídeo atual e os que ainda não começaram. Os áudios já salvos continuam na biblioteca.
 - Com mais de um vídeo, o campo **Nome** fica desativado e cada áudio recebe o título do próprio vídeo. **Autor**, **Álbum**, **Gênero**, **Ano** e **Imagem de capa** valem para todos.
 - Para extrair um álbum, marque **Numerar faixas na ordem da lista**: cada vídeo recebe o nº da sua posição (a partir do nº digitado em "Nº da primeira faixa", ou de 1).
+
+Depois da extração:
+
+- **Tocar agora** reproduz as faixas salvas na ordem da extração; **Ver na biblioteca** mostra somente as faixas desse lote.
 - **Enviar para o celular** envia todos os áudios salvos da última extração.
-- **Tocar agora** reproduz as faixas salvas na ordem da extração; **Ver na biblioteca** mostra somente as faixas desse lote. Falhas são ignoradas nessas ações.
-- **Adicionadas recentemente**, na navegação da biblioteca, reúne as extrações da sessão atual, inclusive substituições, sem incluir importações. A lista é reiniciada ao fechar o aplicativo.
+- **Mostrar arquivo** abre a pasta do áudio no Explorador.
+- **Adicionadas recentemente** reúne as extrações da sessão atual (inclusive substituições, sem importações) e recomeça vazia ao abrir o app.
+
+Links de playlist, de canal e de transmissões ao vivo são recusados. Se a URL de um vídeo também tiver um parâmetro de playlist (`&list=...`), apenas esse vídeo é extraído.
 
 ### Informações do áudio
 
@@ -99,43 +52,81 @@ Estas informações são gravadas no arquivo de áudio, para aparecerem nos play
 | Nº da faixa | Fica sem número (precisa ser maior que zero) |
 | Imagem de capa | Imagem padrão (`assets\default_cover.jpg`) |
 
-A capa pode ser JPG, PNG, WebP, BMP ou GIF. Ela é salva em JPEG, com no máximo 1000 pixels no lado maior, e a proporção é mantida. Áreas transparentes ficam brancas.
-
-Depois de cada extração concluída, esses campos são limpos para que os dados de um áudio não passem para o próximo sem querer.
+A capa pode ser JPG, PNG, WebP, BMP ou GIF. Ela é salva em JPEG, com no máximo 1000 pixels no lado maior, mantendo a proporção; áreas transparentes ficam brancas. Depois de cada extração concluída, os campos são limpos para que os dados de um áudio não passem para o próximo sem querer.
 
 O formato WAV não tem um padrão oficial para essas informações: o app as grava, mas nem todo player as exibe. Para garantir a exibição, prefira MP3, M4A ou FLAC.
 
-Para trocar a capa padrão, substitua `assets\default_cover.jpg` e gere o aplicativo de novo.
+### A biblioteca
+
+Todo áudio extraído vai para a **biblioteca**: a pasta `Música\ytDown`, organizada em `Artista\Álbum\NN - Título.ext`. O índice fica em `%APPDATA%\ytDown\library.db`.
+
+- Para usar outra pasta, clique em **Opções** (embaixo da árvore) e em **Alterar...**. Os áudios que já estão na biblioteca vão junto para a pasta nova.
+- Ao extrair de novo um vídeo que já está na biblioteca (mesmo que o link esteja em outro formato), o app pergunta: **Substituir** (o áudio novo fica no lugar do antigo, que vai para a Lixeira), **Manter os dois** ou **Cancelar**.
+- Um nome de arquivo já ocupado ganha " (1)"; nenhum arquivo é substituído sem você pedir.
+- Ao abrir o app, a biblioteca é verificada em segundo plano. Se um arquivo sumiu da pasta, a faixa aparece esmaecida como indisponível; se ele voltar, fica disponível outra vez. **Remover faixas indisponíveis** apaga somente os registros dessas faixas, depois de confirmar que os arquivos continuam ausentes.
+- Extração, importação e mudança de pasta não acontecem ao mesmo tempo.
+
+#### Importar extrações anteriores à 2.0
+
+Use **Importar áudios extraídos...** na barra lateral. Adicione uma ou mais pastas com extrações antigas e clique em **Importar**. O app procura MP3, M4A, FLAC e WAV também nas subpastas e **copia** os arquivos para a biblioteca, preservando os originais, as etiquetas e as capas. Não há busca automática pela coleção do computador.
+
+- Duplicatas são ignoradas pela URL de origem ou pelo conteúdo do arquivo (SHA-256), comparando com a biblioteca e com o próprio lote.
+- Arquivos sem URL de origem são aceitos; sem título, usa-se o nome do arquivo.
+- Ao cancelar, as faixas já importadas permanecem. O resumo mostra importadas, duplicadas e erros.
+
+### Navegar na biblioteca
+
+- **Músicas:** clique no cabeçalho para ordenar por título, artista, álbum, duração, gênero, ano, nº da faixa, data de inclusão, reproduções ou última reprodução. Arraste os cabeçalhos para reordenar as colunas e use o botão direito no cabeçalho para esconder ou mostrar cada uma; tudo isso fica salvo.
+- **Busca** (Ctrl+F): filtra título, artista, álbum e gênero, sem diferenciar acentos ou maiúsculas; as palavras podem estar em campos diferentes. Esc limpa a busca.
+- **Álbuns:** grade de capas, ordenável por álbum, artista, ano ou data de inclusão. Selecione uma capa e clique em **Abrir álbum** (ou Enter) para ver as faixas; duplo clique na capa toca o álbum. Capas ausentes usam a imagem padrão.
+- **Artistas** e **Gêneros:** agrupam as faixas (faixas sem essa informação ficam num grupo "desconhecido"). O artista mostra seus álbuns e todas as faixas; **Tocar tudo** toca o grupo.
+
+Em qualquer lista de faixas, selecione uma ou mais linhas (Ctrl ou Shift) e use o botão direito para: **Tocar**, **Tocar em seguida**, **Adicionar à fila**, **Adicionar à playlist**, **Enviar para o celular**, **Propriedades**, **Excluir da biblioteca** e, para uma faixa, **Mostrar no Explorer**. Duplo clique ou Enter toca a partir da faixa escolhida, com a lista exibida como fila.
+
+### Tocar
+
+- **Barra de reprodução:** tocar/pausar, anterior, próxima, aleatório, repetir (desligado → todas → uma), posição, volume e mudo. Anterior recomeça a faixa depois de 3 segundos; antes disso, volta para a faixa anterior.
+- **Fila** (à direita): a faixa atual aparece em negrito. Arraste para reordenar, dê duplo clique para tocar, Delete remove as selecionadas e **Limpar** esvazia. Arraste faixas de Músicas para a fila para acrescentá-las. **Salvar playlist** guarda a fila na ordem exibida.
+- **Em reprodução:** capa grande, informações da faixa e as próximas da fila. **Modo compacto** abre uma janela pequena, sempre no topo, com os controles.
+- **Miniatura na barra de tarefas:** ao passar o mouse sobre o ícone do ytDown, aparecem os botões anterior, tocar/pausar e próxima.
+- **Atalhos** na janela principal: Espaço tocar/pausar; Ctrl+Esquerda e Ctrl+Direita faixa anterior ou próxima; Ctrl+Cima e Ctrl+Baixo volume; Ctrl+M mudo; Ctrl+S aleatório; Ctrl+T repetição; Ctrl+L mostra ou esconde a fila; Ctrl+F busca; Alt+Enter propriedades. Os atalhos não atrapalham a digitação nos campos de texto. As teclas de mídia do teclado e o painel de mídia do Windows não são suportados.
+
+Uma reprodução é contada ao ouvir metade da faixa ou quatro minutos, o que vier primeiro; pausas e trechos pulados não contam.
+
+Ao fechar, o ytDown guarda volume, mudo, aleatório, repetição, fila, posição, tamanho da janela, larguras dos painéis, página e colunas. Na próxima abertura a faixa volta carregada, sem tocar: pressione Play para continuar.
+
+### Playlists
+
+- Crie playlists pelo **+ Nova playlist** ou pelo menu de contexto de Playlists na árvore. F2 renomeia; o menu também exclui (com confirmação).
+- Para acrescentar faixas, arraste músicas para a playlist na árvore ou use **Adicionar à playlist** no menu das faixas. A mesma música pode aparecer mais de uma vez.
+- Na página da playlist, arraste uma linha para reordenar, Delete remove as selecionadas e duplo clique toca a partir da linha. **Tocar** e **Enviar para o celular** usam a playlist inteira.
+- **Playlists automáticas** (somente leitura): **Adicionadas nos últimos 30 dias**, **Mais tocadas** (até 50, das mais para as menos tocadas) e **Nunca tocadas**. **Salvar como playlist** cria uma cópia comum, que pode ser editada.
+
+### Editar propriedades
+
+Selecione uma ou mais faixas e escolha **Propriedades** (ou Alt+Enter). Com uma faixa, edite título, artista, álbum, gênero, ano, nº e capa. Com várias, marque **Alterar** apenas nos campos que devem valer para todas. As etiquetas do arquivo, a pasta na biblioteca, a lista e a fila são atualizadas.
+
+Antes de alterar um arquivo, o app guarda uma cópia do original em `.ytdown-recovery`, dentro da pasta da biblioteca. Essas cópias não são apagadas automaticamente; veja [como recuperar](docs/recuperacao-edicao-propriedades.md).
+
+### Excluir faixas
+
+Selecione as faixas e pressione Delete ou escolha **Excluir da biblioteca**. Depois da confirmação, os arquivos vão para a Lixeira do Windows e as faixas saem da biblioteca, da fila e das playlists. Restaurar um arquivo da Lixeira não o devolve à biblioteca: importe-o de novo.
 
 ### Enviar para o celular
 
 O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
 
-1. Instale `dist\ytDown-celular.apk` no celular (Android 10 ou mais recente). Pelo cabo, com a depuração USB ativa: `adb install -r dist\ytDown-celular.apk`. Em celulares Xiaomi, ligue também **Instalar via USB** nas opções do desenvolvedor e confirme o aviso que aparece na tela.
+1. Instale o `ytDown-celular.apk` no celular (Android 10 ou mais recente). Pelo cabo, com a depuração USB ativa: `adb install -r ytDown-celular.apk`. Em celulares Xiaomi, ligue também **Instalar via USB** nas opções do desenvolvedor.
 2. Conecte o celular ao Wi-Fi da mesma rede do PC.
-3. No PC, extraia um áudio e clique em **Enviar para o celular**, na página Extrair. Se o Windows perguntar, permita o acesso em redes privadas.
+3. No PC, escolha o que enviar: os áudios da última extração (página Extrair), faixas selecionadas em qualquer lista (menu de contexto), um álbum inteiro (**Enviar álbum para o celular**, no detalhe do álbum) ou uma playlist (botão na página da playlist ou menu da playlist na árvore). Se o Windows perguntar, permita o acesso em redes privadas.
 4. Abra o app no celular e escolha o PC. Na primeira vez, digite o código de 6 dígitos mostrado na janela do PC.
-5. Toque em **Baixar**. O áudio fica em `Música/ytDown`, com nome, autor e capa, e aparece nos players do celular.
+5. Toque em **Baixar**. O áudio fica em `Música/ytDown`, com nome, autor, álbum e capa, e aparece nos players do celular.
 
-Com a janela "Enviar para o celular" aberta, você pode continuar extraindo: cada novo áudio enviado entra na lista. O compartilhamento termina quando essa janela é fechada.
+Enquanto a janela "Enviar para o celular" estiver aberta, novos envios entram na mesma lista. O compartilhamento termina quando essa janela é fechada. Faixas indisponíveis são deixadas de fora, com aviso.
 
-Na biblioteca, selecione faixas em Músicas, Recentes ou nos detalhes de um álbum, artista ou gênero e escolha **Enviar para o celular** no menu de contexto. Na página de uma playlist, use **Enviar para o celular**. As seleções entram na mesma janela de envio. Faixas marcadas como indisponíveis ou cujos arquivos não estão no disco são ignoradas e informadas em um aviso.
+Se o celular não encontrar o PC, digite no app o endereço mostrado na janela. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, desative o "isolamento de AP" (ou "isolamento de clientes") no roteador, ou use uma rede que não seja a de convidados.
 
-No detalhe de um álbum, **Enviar álbum para o celular** compartilha todas as suas faixas disponíveis, sem depender da seleção na tabela.
-
-Se o celular não encontrar o PC, digite no app o endereço mostrado nessa janela. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, desative o "isolamento de AP" (ou "isolamento de clientes") no roteador, ou use uma rede que não seja a de convidados.
-
-**Segurança:** o celular só consegue baixar os áudios que você enviou, nunca outros arquivos do PC, e só depois de parear. Porém, a transferência não é criptografada: em uma rede que você não controla, outra pessoa poderia ver os áudios enviados. Use em redes de confiança. Para desfazer todos os pareamentos, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
-
-### Links aceitos
-
-Links de playlist, de canal e de transmissões ao vivo são recusados. Se a URL de um vídeo também tiver um parâmetro de playlist (`&list=...`), apenas esse vídeo é extraído.
-
-## Levar para outro computador
-
-Copie a pasta `dist\ytDown` **inteira**. O `ytDown.exe` não funciona sem a pasta `_internal` ao lado dele. Não é preciso instalar Python nem ffmpeg.
-
-Como o executável não tem assinatura digital, o Windows SmartScreen pode exibir um aviso na primeira execução em outro computador.
+**Segurança:** o celular só consegue baixar os áudios que você enviou, nunca outros arquivos do PC, e só depois de parear. A transferência não é criptografada: use em redes de confiança. Para desfazer todos os pareamentos, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
 
 ## Quando parar de funcionar
 
@@ -151,8 +142,6 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 
 ## Desenvolvimento
 
-A versão 2.0 (player e biblioteca, em Qt) está em construção na branch `develop`; o plano está em `docs/arquitetura-2.0.md`. A interface é toda em Qt (PySide6); a de Tkinter da 1.x saiu na JOW-21.
-
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
 .\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (HTTP local, sem serviços externos)
@@ -160,11 +149,9 @@ powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\
 powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
 ```
 
-O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`.
-Para usar somente dependências já instaladas ou em cache, acrescente `-Offline` aos
-scripts: o Windows não executa pip, e o Gradle usa `--offline`. O wrapper do Gradle
-precisa já estar no cache. Veja o [roteiro JOW-49](docs/jow-49-validacao.md) para
-pré-requisitos, validação manual e pendências.
+O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`. Para usar somente dependências já instaladas ou em cache, acrescente `-Offline` aos scripts: o Windows não executa pip, e o Gradle usa `--offline` (o wrapper do Gradle precisa já estar no cache). O plano e as decisões da 2.0 estão em [`docs/arquitetura-2.0.md`](docs/arquitetura-2.0.md), e o roteiro de validação do lançamento em [`docs/jow-49-validacao.md`](docs/jow-49-validacao.md).
+
+O cache de miniaturas das capas fica em `%LOCALAPPDATA%\ytDown\thumbs` e pode ser apagado a qualquer momento.
 
 ### Arquitetura
 
@@ -173,18 +160,19 @@ O código segue a Clean Architecture: está dividido em camadas, e cada camada s
 ```
 main.py                    ponto de entrada (também usado pelo PyInstaller)
 ytdown/
-  domain/                  conceitos e regras puras: formatos, metadados, URLs, erros
-  application/             casos de uso (ExtractAudio, ExtractBatch, RegisterExtractedTrack, Playback, SharingSession)
+  domain/                  conceitos e regras puras: formatos, metadados, URLs, fila, playlists, erros
+  application/             casos de uso (extração, biblioteca, importação, Playback, playlists, SharingSession)
     ports.py               interfaces de que os casos de uso precisam
   infrastructure/          implementações dessas interfaces
     youtube.py             download e conversão (yt-dlp + ffmpeg)
-    tags.py, covers.py     nome, autor e capa (mutagen + Pillow)
+    tags.py, covers.py     etiquetas e capas (mutagen + Pillow)
     qt_audio_player.py     toca os áudios (QtMultimedia)
     sharing/               servidor HTTP/UDP para o celular e celulares pareados
-    sqlite_library.py,     índice da biblioteca (SQLite) e a pasta gerenciada
+    sqlite_*.py,           índice da biblioteca e playlists (SQLite) e a pasta gerenciada
       library_storage.py
+    windows_taskbar.py     botões na miniatura da barra de tarefas
   presentation/            todos os textos mostrados ao usuário e as janelas
-    qt/                    interface em Qt (PySide6): janela principal, páginas, Opções, envio para o celular
+    qt/                    interface em Qt (PySide6): janela principal, páginas, diálogos
   bootstrap.py             escolhe as implementações e conecta as camadas
 tests/
   unit/                    regras e casos de uso, com dublês das interfaces (tests/fakes.py)
@@ -236,38 +224,3 @@ Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mut
 ## Uso responsável
 
 Baixe apenas conteúdo que você tem direito de usar. Os Termos de Serviço do YouTube e as leis de direitos autorais continuam valendo.
-
-### Ouvir a biblioteca (JOW-25)
-
-Na página **Músicas**, clique no cabeçalho para ordenar por título, artista, álbum, duração, gênero, ano, número da faixa, data de inclusão ou reproduções. Arraste os cabeçalhos para reordenar as colunas; clique com o botão direito no cabeçalho para esconder ou mostrar cada uma. Essas preferências, incluindo larguras e ordenação, ficam salvas nas configurações.
-
-Use Ctrl ou Shift para selecionar várias faixas. Dê duplo clique ou pressione Enter para tocar a faixa atual: toda a lista, na ordem exibida, vira a fila de reprodução. Arquivos marcados como indisponíveis aparecem esmaecidos. A lista é atualizada automaticamente quando uma extração termina, inclusive quando parte do lote falha ou é cancelada.
-
-Na lista de reprodução à direita, a faixa atual aparece em negrito e cada entrada mostra sua duração; o rodapé mostra a duração total. Arraste uma entrada para mudar sua posição, dê duplo clique para tocá-la, selecione entradas e pressione Delete para removê-las ou use Limpar para esvaziar a fila. Arraste faixas selecionadas de Músicas para acrescentá-las, inclusive duplicatas. O aleatório mantém sua própria ordem de reprodução. **Salvar playlist** captura a ordem visível da fila.
-
-Crie playlists pelo botão **+ Nova playlist** ou pelo menu de contexto de Playlists na árvore. Selecione um nó para abrir sua lista; F2 renomeia e o menu permite excluir com confirmação. Arraste músicas selecionadas para um nó ou use **Adicionar à playlist** no menu de contexto das faixas. Na página, arraste uma linha para reordenar, pressione Delete para remover as selecionadas ou dê duplo clique para tocar a partir de uma linha. A duração total e as ocorrências duplicadas são preservadas no banco ao reabrir a biblioteca.
-
-Em Playlists, as listas automáticas são somente leitura e calculadas ao abrir: **Adicionadas nos últimos 30 dias** inclui faixas entre o instante atual e exatamente 30 dias antes; **Mais tocadas** reúne até 50 faixas com pelo menos uma reprodução, em ordem decrescente de contagem; **Nunca tocadas** reúne faixas com contagem zero. Empates em Mais tocadas usam título e ID. A lista Mais tocadas também é atualizada quando uma reprodução é contabilizada enquanto está aberta. Use Tocar, Enviar para o celular ou **Salvar como playlist** para criar uma cópia comum editável. A lista de 30 dias é independente de **Adicionadas recentemente**, que continua restrita às extrações da sessão atual.
-
-Ao abrir o app, a biblioteca é verificada em segundo plano. Se um arquivo tiver sido removido da pasta gerenciada, sua faixa fica indisponível; se ele voltar, fica disponível outra vez. O botão **Remover faixas indisponíveis** apaga somente os respectivos registros da biblioteca, depois de confirmar que os arquivos continuam ausentes. Se toda a pasta da biblioteca estiver inacessível, o app avisa uma vez e não altera as faixas indexadas.
-
-A barra de reprodução (JOW-28) controla tocar/pausar, anterior, próxima, aleatório e repetição (desligada → todas → uma). Anterior recomeça a faixa após três segundos; antes disso, volta à anterior. Arraste a posição para escolher um trecho e solte para saltar; as teclas do slider também ajustam a posição. O tempo decorrido e a duração acompanham o player, assim como volume e mudo. Título, artista e miniatura da capa acompanham a faixa atual; capas ausentes ou ilegíveis usam a imagem padrão. A leitura das capas ocorre em segundo plano, sem travar os controles.
-
-Uma reprodução é registrada ao ouvir metade da duração ou quatro minutos, o que ocorrer primeiro. Pausas e trechos saltados não contam; repetir a faixa inicia uma nova contagem. As colunas Reproduções e Última reprodução são atualizadas ao registrar.
-
-O cache descartável de miniaturas usa `%LOCALAPPDATA%/ytDown/thumbs` (na ausência da variável, `~/AppData/Local/ytDown/thumbs`). Capas embutidas são identificadas por SHA-256 dos bytes originais e compartilhadas entre faixas; a imagem PNG preserva proporções e tem no máximo 200 px por lado. Registro e importação agendam a geração em segundo plano. A barra de reprodução mantém a capa padrão enquanto aguarda a leitura. Falhas do cache não impedem a operação da biblioteca.
-
-A grade e a edição de capas ainda não estão implementadas. Para integrar uma futura edição, chame `ThumbnailCache.request(caminho_do_audio)` depois de gravar a capa; consumidores devem chamar `get_or_create` em segundo plano. A limpeza explícita `cleanup(caminhos)` também deve rodar em segundo plano, recebendo uma relação completa e estável de todos os áudios da biblioteca, sem alterações concorrentes na biblioteca. Se algum áudio não puder ser lido, nenhuma miniatura é removida. A limpeza não é automática.
-# Artistas e gêneros
-
-As páginas de artistas e gêneros agrupam faixas sem metadados em grupos desconhecidos. Artistas exibem quantidades de álbuns e faixas, uma grade de álbuns e todas as faixas; gêneros exibem suas faixas. Em ambos, **Tocar tudo** usa as faixas do grupo. A busca considera título, artista, álbum e gênero; as contagens representam o grupo inteiro. A biblioteca é atualizada após extração e importação.
-
-A grade de álbuns do artista apresenta nomes e contagens, sem capas ou abertura direta do álbum; a página Álbuns oferece esses recursos.
-# Exclusão de faixas
-
-Nas listas de faixas, selecione uma ou mais músicas e pressione Delete ou escolha
-“Excluir da biblioteca” no menu de contexto. Após a confirmação, os arquivos vão
-para a Lixeira do Windows e as faixas saem do índice e da fila. A faixa atual avança
-antes da exclusão. Falhas são informadas por faixa; arquivos indisponíveis não são
-removidos por essa ação. Restaurar um arquivo pela Lixeira não o reinsere no índice;
-importe-o novamente. Playlists salvas ainda não existem no aplicativo.

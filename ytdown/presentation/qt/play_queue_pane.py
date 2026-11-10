@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListWidg
 from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.songs_page import TRACKS_MIME, SongsTable
 from ytdown.presentation.qt.transport_bar import _time
+from ytdown.presentation import texts
 
 TITLE = "Lista de reprodução"
 EMPTY_MESSAGE = "A lista de reprodução está vazia."
@@ -173,7 +174,7 @@ class PlayQueuePane(QWidget):
         if not ids:
             return
         answer = QMessageBox.question(self, "Excluir faixas",
-                                      f"Enviar {len(ids)} faixa(s) para a Lixeira e removê-las da biblioteca?",
+                                      texts.delete_tracks_question(len(ids)),
                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                       QMessageBox.StandardButton.No)
         if answer != QMessageBox.StandardButton.Yes:
@@ -209,4 +210,4 @@ class PlayQueuePane(QWidget):
         self.empty_message.setVisible(not tracks)
         self.clear_button.setEnabled(bool(tracks))
         self.save_button.setEnabled(bool(tracks) and self.save_playlist is not None)
-        self.total.setText(f"{len(tracks)} faixas · {_time(sum(max(0, t.duration_ms) for t in tracks))}")
+        self.total.setText(f"{texts.tracks_count(len(tracks))} · {_time(sum(max(0, t.duration_ms) for t in tracks))}")

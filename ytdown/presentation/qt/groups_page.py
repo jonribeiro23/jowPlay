@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListView
 from ytdown.domain.library import TrackQuery, summarize_albums, summarize_artists, summarize_genres
 from ytdown.presentation.qt.songs_page import TrackTableModel
 from ytdown.presentation.qt.track_actions import TrackActions
+from ytdown.presentation import texts
 
 
 class GroupsModel(QAbstractListModel):
@@ -25,8 +26,8 @@ class GroupsModel(QAbstractListModel):
         item = self.visible[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
             if self.kind == "artist":
-                return f"{item.name}  ·  {item.album_count} álbuns  ·  {item.track_count} faixas"
-            return f"{item.name}  ·  {item.track_count} faixas"
+                return f"{item.name}  ·  {texts.albums_count(item.album_count)}  ·  {texts.tracks_count(item.track_count)}"
+            return f"{item.name}  ·  {texts.tracks_count(item.track_count)}"
         return None
 
     def refresh(self):
@@ -116,9 +117,9 @@ class GroupsPage(QWidget):
         self.track_model.beginResetModel()
         self.track_model.tracks = tracks
         self.track_model.endResetModel()
-        self.details.setText(f"{name}  ·  {len(tracks)} faixas")
+        self.details.setText(f"{name}  ·  {texts.tracks_count(len(tracks))}")
         if self.kind == "artist":
-            self.album_model.setStringList([f"{a.title}\n{a.track_count} faixas" for a in summarize_albums(tracks)])
+            self.album_model.setStringList([f"{a.title}\n{texts.tracks_count(a.track_count)}" for a in summarize_albums(tracks)])
 
     def show_list(self):
         self.current_key = None

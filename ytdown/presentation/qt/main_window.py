@@ -7,6 +7,7 @@ from collections.abc import Callable
 from PySide6.QtCore import QRect, QSize, Qt, Signal, QTimer
 from PySide6.QtGui import QCloseEvent, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -49,6 +50,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(*MINIMUM_SIZE)
         self.resize(*DEFAULT_SIZE)
         self.settings = settings
+        self._closed = False
         self._history: list[PageId] = []
         self._history_index = -1
 
@@ -166,6 +168,9 @@ class MainWindow(QMainWindow):
         """Páginas com trabalho em andamento (ex.: extração) terminam antes de a janela fechar:
         a janela some na hora, e o app só encerra depois que elas limparem o que criaram.
         """
+        if self._closed:
+            event.accept()
+            return
         waiting = [page for page in self._pages() if hasattr(page, "shutdown") and not page.shutdown(self.close)]
         if waiting:
             event.ignore()
@@ -178,8 +183,15 @@ class MainWindow(QMainWindow):
             sizes = self.splitter.sizes()
             if all(size > 0 for size in sizes):
                 self.settings.set("workspace.splitter", sizes)
+        self._closed = True
         self.closing.emit()
         event.accept()
+        # Fechar a janela principal encerra o app. O Qt só sai sozinho quando a última janela
+        # *visível* fecha: aqui a janela pode já estar escondida, esperando as páginas acima,
+        # e a janela de envio para o celular pode continuar aberta.
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     @staticmethod
     def _scrollable(page: QWidget) -> QScrollArea:

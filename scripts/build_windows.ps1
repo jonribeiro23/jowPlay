@@ -71,7 +71,8 @@ Get-ChildItem "$qt\translations" -File -ErrorAction SilentlyContinue |
 $required = @(
     "$app\ytDown.exe", "$app\_internal\ffmpeg\ffmpeg.exe", "$app\_internal\assets\theme\ytdown.qss",
     "$app\_internal\assets\theme\icons\play.svg", "$qt\Qt6Svg.dll",
-    "$qt\plugins\iconengines\qsvgicon.dll", "$qt\plugins\imageformats\qsvg.dll", "$qt\plugins\platforms\qwindows.dll"
+    "$qt\plugins\iconengines\qsvgicon.dll", "$qt\plugins\imageformats\qsvg.dll", "$qt\plugins\platforms\qwindows.dll",
+    "$qt\plugins\multimedia\ffmpegmediaplugin.dll", "$qt\translations\qtbase_pt_BR.qm"
 )
 $missing = $required | Where-Object { -not (Test-Path $_) }
 if ($missing) { throw "Faltam arquivos no pacote: $($missing -join ', ')" }

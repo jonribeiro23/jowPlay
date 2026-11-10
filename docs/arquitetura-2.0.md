@@ -159,7 +159,7 @@ Protótipo com `QMediaPlayer` + `QAudioOutput` (PySide6 6.12.0, Qt 6.12.0, Pytho
 | Lê o título das etiquetas, com acentos | ✅ | ✅ | ✅ | ✅ |
 
 - **Troca rápida de faixa:** 20 trocas seguidas, sem erro, com a última faixa tocando sozinha.
-- **Ambientes:** passou rodando pelo Python, empacotado com PyInstaller (onedir) e empacotado sem Python nem ffmpeg no PATH. Não foi testado em uma máquina Windows limpa; isso fica para o teste final da 2.0 (JOW-49).
+- **Ambientes:** passou rodando pelo Python, empacotado com PyInstaller (onedir) e empacotado sem Python nem ffmpeg no PATH. O teste final da 2.0 (JOW-49) rodou o pacote com PATH só do Windows e perfil isolado, mas não numa máquina limpa; veja [jow-49-validacao.md](jow-49-validacao.md).
 - **Tempo de carregamento:** de 11 ms a 108 ms por arquivo.
 
 **Dependências:** o QtMultimedia **não** está no `PySide6-Essentials`. É preciso instalar também o `PySide6-Addons`. O Qt traz o próprio FFmpeg para decodificar (18,7 MB); o `ffmpeg.exe` do ytDown continua sendo usado só na conversão.
@@ -277,8 +277,8 @@ A seleção múltipla é lida por posição no modelo, preservando a ordem visua
 com o mesmo ID. Tocar substitui a fila; tocar em seguida e adicionar à fila usam os
 serviços de `Playback`. A busca em Músicas atua sobre a mesma tabela. No Windows, o menu
 oferece mostrar no Explorer somente para uma faixa cujo arquivo existe. Playlist,
-envio e exclusão também estão integrados quando os serviços estão disponíveis; edição
-de propriedades e Alt+Enter permanecem pendentes. Enter e duplo clique mantêm a reprodução da lista visível.
+envio, propriedades (também Alt+Enter) e exclusão são integrados quando os serviços estão
+disponíveis. Enter e duplo clique mantêm a reprodução da lista visível.
 
 ## Estatísticas de reprodução
 
@@ -287,3 +287,29 @@ de propriedades e Alt+Enter permanecem pendentes. Enter e duplo clique mantêm a
 ## Benchmark do workspace (JOW-47)
 
 O [benchmark reproduzível e suas limitações](arquitetura-benchmark-workspace.md) usa 5.000 WAVs temporários, 500 álbuns e 300 artistas em Qt offscreen. Nesta máquina, importar 10 arquivos com 5.000 existentes levou 39,811 s antes e 6,068 s depois de paralelizar a leitura dos hashes, em medições únicas. A deduplicação continua calculando SHA-256 completo dos arquivos existentes antes de importar; falhas de leitura interrompem a operação. Não se mediu o executável nem fluidez visual, e não há limites de aceitação verificados.
+
+## Editar propriedades (JOW-43)
+
+`EditTrackProperties` aplica a cada faixa somente os campos alterados (no lote, os marcados
+em **Alterar**). Antes de mexer no arquivo, copia o original para `.ytdown-recovery` na
+pasta da biblioteca; grava as etiquetas numa cópia, coloca o resultado no caminho
+`Artista\Álbum\NN - Título` correspondente e só então atualiza o SQLite. Se uma faixa
+falha, o original é restaurado e o lote continua. `Playback.update_track` troca a faixa na
+fila sem interromper a reprodução. Não há transação única entre arquivos e banco; a
+recuperação manual está em [recuperacao-edicao-propriedades.md](recuperacao-edicao-propriedades.md).
+
+## Enviar da biblioteca para o celular (JOW-44)
+
+Todas as origens (Extrair, listas de faixas, detalhe do álbum e playlists, pelo botão ou
+pelo menu da árvore) passam por `send_tracks_to_phone`, que resolve os caminhos pela
+`LibraryStorage`, deixa de fora faixas indisponíveis com um aviso e entrega os arquivos ao
+`PhoneSharing`. Ele mantém uma única janela de envio: novos envios entram na lista aberta.
+O protocolo com o celular não mudou; o app Android da 1.0 continua compatível.
+
+## Botões na miniatura da barra de tarefas (JOW-48)
+
+`WindowsThumbnailControls` (infrastructure) usa `ITaskbarList3` via ctypes para anterior,
+tocar/pausar e próxima, e `TaskbarPlayback` (presentation) acompanha o estado do
+`Playback`. A integração espera a mensagem `TaskbarButtonCreated`, recria os botões se o
+Explorer reiniciar e, em qualquer falha, apenas registra no log. Detalhes em
+[jow-48-taskbar.md](jow-48-taskbar.md).

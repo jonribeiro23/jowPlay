@@ -9,6 +9,7 @@ from ytdown.application.playback import Playback
 from ytdown.domain.library import SortField, TrackQuery
 from ytdown.presentation.qt import theme
 from ytdown.presentation.qt.track_actions import TrackActions
+from ytdown.presentation import texts
 
 COLUMNS = (
     ("Título", SortField.TITLE), ("Artista", SortField.ARTIST),
@@ -212,7 +213,7 @@ class SongsPage(QWidget):
 
     def _update_count(self):
         missing = sum(track.missing for track in self.model.tracks)
-        self.count.setText(f"{self.model.rowCount()} faixas")
+        self.count.setText(texts.tracks_count(self.model.rowCount()))
         self.remove_unavailable_button.setEnabled(bool(missing) and self._remove_unavailable is not None)
 
 

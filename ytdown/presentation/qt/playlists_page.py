@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QLabel, QListWidg
 from ytdown.presentation.qt.track_actions import send_tracks_to_phone
 from ytdown.presentation.qt.transport_bar import _time
 from ytdown.application.playlists import AutomaticPlaylist
+from ytdown.presentation import texts
 
 
 class PlaylistList(QListWidget):
@@ -94,7 +95,7 @@ class PlaylistsPage(QWidget):
         self.title.setText(self.playlist.name if self.playlist else 'Selecione uma playlist')
         for track in tracks:
             self.items.addItem(QListWidgetItem(f'{track.title} — {track.display_artist}  {_time(track.duration_ms)}'))
-        self.total.setText(f'{len(tracks)} faixas · {_time(sum(max(0, t.duration_ms) for t in tracks))}')
+        self.total.setText(f'{texts.tracks_count(len(tracks))} · {_time(sum(max(0, t.duration_ms) for t in tracks))}')
         self.play_button.setEnabled(bool(tracks))
         self.send_button.setEnabled(bool(tracks))
         self.save_button.setVisible(self.automatic is not None)

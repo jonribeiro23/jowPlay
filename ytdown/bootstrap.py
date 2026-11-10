@@ -85,10 +85,12 @@ def run() -> int:
     from ytdown.infrastructure.qt_audio_player import QtAudioPlayer
     from ytdown.presentation.qt.send_dialog import PhoneSharing
     from ytdown.presentation.qt.theme import apply_theme
+    from ytdown.presentation.qt.translations import install_translations
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = QApplication(sys.argv)
     app.setApplicationName("ytDown")
+    install_translations(app)
     app.setWindowIcon(QIcon(str(asset("icon.ico"))))
     apply_theme(app, asset("theme"))
     try:
