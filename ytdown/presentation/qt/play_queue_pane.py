@@ -104,6 +104,7 @@ class PlayQueuePane(QWidget):
         self._playback = None
         self.delete_tracks = None
         self.refresh_library = None
+        self.save_playlist = None
         self._keys = []
         self.setObjectName("playQueuePane")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
@@ -122,7 +123,7 @@ class PlayQueuePane(QWidget):
         self.clear_button.setEnabled(False)
         self.save_button = QPushButton("Salvar playlist")
         self.save_button.setEnabled(False)
-        self.save_button.setToolTip("Salvar playlists estará disponível futuramente.")
+        self.save_button.clicked.connect(lambda: self.save_playlist(self._playback.queue) if self.save_playlist else None)
         buttons = QHBoxLayout()
         buttons.addWidget(self.clear_button)
         buttons.addWidget(self.save_button)
@@ -207,4 +208,5 @@ class PlayQueuePane(QWidget):
                 self.items.item(row).setSelected(True)
         self.empty_message.setVisible(not tracks)
         self.clear_button.setEnabled(bool(tracks))
+        self.save_button.setEnabled(bool(tracks) and self.save_playlist is not None)
         self.total.setText(f"{len(tracks)} faixas · {_time(sum(max(0, t.duration_ms) for t in tracks))}")

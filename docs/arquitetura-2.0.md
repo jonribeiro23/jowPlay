@@ -231,7 +231,7 @@ Atalhos locais (JOW-39): um filtro Qt associado à janela encaminha Espaço, Ctr
 
 `MainWindow()` permanece utilizável sem serviços, com controles de transporte desabilitados. `build_main_window` chama `TransportBar.bind` com o mesmo `Playback` de `SongsPage`, um callback de `MetadataReader.read_cover` que resolve o caminho pelo storage e o `QPixmap` da capa padrão criado na thread da UI. Todos os comandos passam pelo Playback. O aviso opcional `PlaybackSettingsListener.on_settings_changed` sincroniza volume já limitado pelo player, mudo e repetição inclusive quando alterados fora da barra, sem exigir mudanças nos listeners antigos. `remove_listener` permite desligar a barra ao fechar ou destruir a janela, e seu adaptador mantém apenas uma referência fraca ao widget.
 
-O painel `PlayQueuePane` usa o mesmo Playback: exibe a ordem da lista e marca a posição atual, mesmo com duplicatas ou aleatório. Identidades opacas das entradas preservam seleção e foco quando a fila muda externamente, sem confundir cópias da mesma faixa. Os avisos de fila e faixa redesenham o painel; duplo clique, Delete, limpar e arraste interno usam posições do Playback. O arraste de Músicas acrescenta as linhas selecionadas na ordem visível. O listener é removido ao fechar ou destruir o painel. Salvar playlist permanece desabilitado.
+O painel `PlayQueuePane` usa o mesmo Playback: exibe a ordem da lista e marca a posição atual, mesmo com duplicatas ou aleatório. Identidades opacas das entradas preservam seleção e foco quando a fila muda externamente, sem confundir cópias da mesma faixa. Os avisos de fila e faixa redesenham o painel; duplo clique, Delete, limpar e arraste interno usam posições do Playback. O arraste de Músicas acrescenta as linhas selecionadas na ordem visível. O listener é removido ao fechar ou destruir o painel. Salvar playlist captura a ordem visível da fila.
 
 Durante o arraste, os avisos do relógio não movem o slider; soltar envia um único seek. Mudanças por teclado também enviam seek. A sincronização programática bloqueia os sinais dos sliders para evitar comandos de retorno. A barra mostra posição/duração reais, estado tocar/pausar, aleatório e os três modos de repetição.
 
@@ -262,7 +262,7 @@ migração 2 acrescenta playlists e suas posições sem alterar faixas existente
 cada alteração usa transação imediata e a chave única também protege gravações de
 outras conexões. Chaves estrangeiras removem ocorrências quando a faixa é excluída,
 na mesma transação da exclusão JOW-41. `ManagePlaylists` oferece criação, edição,
-exclusão e captura da ordem visível da fila. A interface de playlists ainda é futura.
+exclusão e captura da ordem visível da fila. A árvore oferece nós de playlists, criação, renomeação, exclusão e destino de arraste. `PlaylistsPage` apresenta ocorrências em ordem, reordena e remove por posição, toca e envia as faixas; as ações de contexto da biblioteca acrescentam faixas pela mesma aplicação.
 
 ## Em reprodução
 

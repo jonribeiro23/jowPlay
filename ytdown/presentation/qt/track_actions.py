@@ -15,6 +15,7 @@ class TrackActions:
         self.send_to_phone = send_to_phone
         self.delete_tracks = None
         self.refresh_library = None
+        self.playlist_navigation = None
         table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         table.customContextMenuRequested.connect(self.open_menu)
@@ -33,6 +34,12 @@ class TrackActions:
         menu.addAction("Tocar", lambda: self.playback.play_tracks(tracks))
         menu.addAction("Tocar em seguida", lambda: self.playback.play_next(tracks))
         menu.addAction("Adicionar à fila", lambda: self.playback.append(tracks))
+        if self.playlist_navigation is not None:
+            submenu = menu.addMenu("Adicionar à playlist")
+            for playlist in self.playlist_navigation._playlist_service.playlists.list_playlists():
+                submenu.addAction(playlist.name, lambda checked=False, playlist_id=playlist.id:
+                                  self.playlist_navigation.add_tracks(playlist_id, tracks))
+            submenu.setEnabled(bool(submenu.actions()))
         if self.storage is not None and self.send_to_phone is not None:
             menu.addAction("Enviar para o celular", lambda: self.send_tracks(tracks))
         if self.delete_tracks is not None:

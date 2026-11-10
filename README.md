@@ -119,7 +119,7 @@ O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
 
 Com a janela "Enviar para o celular" aberta, você pode continuar extraindo: cada novo áudio enviado entra na lista. O compartilhamento termina quando essa janela é fechada.
 
-Na biblioteca, selecione faixas em Músicas, Recentes ou nos detalhes de um álbum, artista ou gênero e escolha **Enviar para o celular** no menu de contexto. As seleções entram na mesma janela de envio. Faixas marcadas como indisponíveis ou cujos arquivos não estão no disco são ignoradas e informadas em um aviso. A integração com playlists depende da futura interface de playlists.
+Na biblioteca, selecione faixas em Músicas, Recentes ou nos detalhes de um álbum, artista ou gênero e escolha **Enviar para o celular** no menu de contexto. Na página de uma playlist, use **Enviar para o celular**. As seleções entram na mesma janela de envio. Faixas marcadas como indisponíveis ou cujos arquivos não estão no disco são ignoradas e informadas em um aviso.
 
 No detalhe de um álbum, **Enviar álbum para o celular** compartilha todas as suas faixas disponíveis, sem depender da seleção na tabela.
 
@@ -239,7 +239,9 @@ Na página **Músicas**, clique no cabeçalho para ordenar por título, artista,
 
 Use Ctrl ou Shift para selecionar várias faixas. Dê duplo clique ou pressione Enter para tocar a faixa atual: toda a lista, na ordem exibida, vira a fila de reprodução. Arquivos marcados como indisponíveis aparecem esmaecidos. A lista é atualizada automaticamente quando uma extração termina, inclusive quando parte do lote falha ou é cancelada.
 
-Na lista de reprodução à direita, a faixa atual aparece em negrito e cada entrada mostra sua duração; o rodapé mostra a duração total. Arraste uma entrada para mudar sua posição, dê duplo clique para tocá-la, selecione entradas e pressione Delete para removê-las ou use Limpar para esvaziar a fila. Arraste faixas selecionadas de Músicas para acrescentá-las, inclusive duplicatas. O aleatório mantém sua própria ordem de reprodução. Salvar playlist ainda não está disponível.
+Na lista de reprodução à direita, a faixa atual aparece em negrito e cada entrada mostra sua duração; o rodapé mostra a duração total. Arraste uma entrada para mudar sua posição, dê duplo clique para tocá-la, selecione entradas e pressione Delete para removê-las ou use Limpar para esvaziar a fila. Arraste faixas selecionadas de Músicas para acrescentá-las, inclusive duplicatas. O aleatório mantém sua própria ordem de reprodução. **Salvar playlist** captura a ordem visível da fila.
+
+Crie playlists pelo botão **+ Nova playlist** ou pelo menu de contexto de Playlists na árvore. Selecione um nó para abrir sua lista; F2 renomeia e o menu permite excluir com confirmação. Arraste músicas selecionadas para um nó ou use **Adicionar à playlist** no menu de contexto das faixas. Na página, arraste uma linha para reordenar, pressione Delete para remover as selecionadas ou dê duplo clique para tocar a partir de uma linha. A duração total e as ocorrências duplicadas são preservadas no banco ao reabrir a biblioteca.
 
 Ao abrir o app, a biblioteca é verificada em segundo plano. Se um arquivo tiver sido removido da pasta gerenciada, sua faixa fica indisponível; se ele voltar, fica disponível outra vez. O botão **Remover faixas indisponíveis** apaga somente os respectivos registros da biblioteca, depois de confirmar que os arquivos continuam ausentes. Se toda a pasta da biblioteca estiver inacessível, o app avisa uma vez e não altera as faixas indexadas.
 

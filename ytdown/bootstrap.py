@@ -124,6 +124,7 @@ def build_main_window(library, playback, extract_batch, sharing):
     from ytdown.presentation.qt.songs_page import SongsPage
     from ytdown.presentation.qt.albums_page import AlbumsPage
     from ytdown.presentation.qt.groups_page import GroupsPage
+    from ytdown.presentation.qt.playlists_page import PlaylistsPage
     from ytdown.presentation.qt.now_playing import NowPlayingPage, CompactPlayer
     from PySide6.QtGui import QPixmap
     from ytdown.application.library import DeleteTracks, RemoveUnavailableTracks
@@ -153,6 +154,8 @@ def build_main_window(library, playback, extract_batch, sharing):
         elif page in (PageId.ARTISTS, PageId.GENRES):
             pages[page] = GroupsPage(library.tracks, playback, "artist" if page is PageId.ARTISTS else "genre",
                                      storage=library.storage, send_to_phone=sharing.send)
+        elif page is PageId.PLAYLISTS and library.playlists is not None:
+            pages[page] = PlaylistsPage(library.playlists, playback)
         elif page is PageId.EXTRACT:
             pages[page] = ExtractPage(extract_batch, library.register, send_to_phone=sharing.send,
                                       genre_suggestions=lambda: known_genres(library.tracks))
@@ -161,6 +164,20 @@ def build_main_window(library, playback, extract_batch, sharing):
         return pages[page]
 
     window = MainWindow(page_factory, settings=library.settings)
+    if library.playlists is not None:
+        playlist_page = pages[PageId.PLAYLISTS]
+        window.navigation.bind_playlists(library.playlists, playlist_page)
+        window.navigation.playlist_selected.connect(lambda _id: window.show_page(PageId.PLAYLISTS))
+        from PySide6.QtWidgets import QToolButton
+        new_playlist = QToolButton(window.side_pane)
+        new_playlist.setText('+ Nova playlist')
+        new_playlist.clicked.connect(lambda: window.navigation.create_playlist())
+        window.side_pane.layout().insertWidget(1, new_playlist)
+        window.new_playlist_button = new_playlist
+        window.play_queue.save_playlist = lambda queue: window.navigation.create_playlist(queue)
+        playlist_page.send_button.clicked.connect(lambda: pages[PageId.SONGS].track_actions.send_tracks(playlist_page.playlist.tracks)
+                                                  if playlist_page.playlist else None)
+        pages[PageId.SONGS].model.modelReset.connect(playlist_page.refresh)
     from ytdown.presentation.qt.playback_shortcuts import PlaybackShortcuts
     window.playback_shortcuts = PlaybackShortcuts(window, playback)
     window.closing.connect(window.playback_shortcuts.shutdown)
@@ -196,6 +213,8 @@ def build_main_window(library, playback, extract_batch, sharing):
     for page in (PageId.SONGS, PageId.RECENT, PageId.ALBUMS, PageId.ARTISTS, PageId.GENRES):
         pages[page].track_actions.delete_tracks = delete_tracks
         pages[page].track_actions.refresh_library = pages[PageId.SONGS].refresh
+        if library.playlists is not None:
+            pages[page].track_actions.playlist_navigation = window.navigation
     window.play_queue.delete_tracks = delete_tracks
     window.play_queue.refresh_library = pages[PageId.SONGS].refresh
     last_ids = []
