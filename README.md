@@ -4,6 +4,8 @@
 pelo botão da barra inferior ou com duplo clique na miniatura. O botão **Modo compacto**
 abre uma janela sempre no topo com controles de reprodução; sua posição é lembrada.
 
+Na janela principal, Espaço alterna tocar/pausar, Ctrl+Esquerda e Ctrl+Direita passam à faixa anterior ou próxima, e Ctrl+Cima e Ctrl+Baixo ajustam o volume em 5 pontos. Ctrl+M alterna mudo, Ctrl+S alterna aleatório e Ctrl+T muda o modo de repetição. Os atalhos de reprodução não interferem nos campos de texto. Controles globais de mídia e painel SMTC do Windows ainda não foram implementados ou verificados.
+
 Nas listas de faixas de Músicas (inclusive filtrada pela busca), álbum, artista e gênero,
 selecione uma ou mais linhas e clique com o botão direito para tocar a seleção, tocar em
 seguida ou adicionar à fila. A ordem segue as linhas exibidas, inclusive entradas repetidas.

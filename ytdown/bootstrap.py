@@ -157,6 +157,9 @@ def build_main_window(library, playback, extract_batch, sharing):
         return pages[page]
 
     window = MainWindow(page_factory, settings=library.settings)
+    from ytdown.presentation.qt.playback_shortcuts import PlaybackShortcuts
+    window.playback_shortcuts = PlaybackShortcuts(window, playback)
+    window.closing.connect(window.playback_shortcuts.shutdown)
     window.compact_player = CompactPlayer(playback, pages[PageId.NOW_PLAYING], library.settings, window)
     pages[PageId.NOW_PLAYING].compact_requested.connect(window.compact_player.show)
     window.closing.connect(window.compact_player.shutdown)
