@@ -9,6 +9,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.io.OutputStream
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
@@ -41,11 +42,40 @@ class HttpPcConnection : PcConnection {
         }
 
     override fun listFiles(server: Server, token: String): List<RemoteFile> =
+        request(server, "/api/catalog", token) { connection ->
+            if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND) return@request legacyFiles(server, token)
+            val files = JSONObject(readBody(connection)).getJSONArray("tracks")
+            List(files.length()) { index ->
+                val file = files.getJSONObject(index)
+                RemoteFile(file.getString("id"), file.getString("name"), file.getLong("size"),
+                    file.optString("title", file.getString("name")), file.optString("artist", ""),
+                    if (file.isNull("cover_revision")) null else file.optString("cover_revision"))
+            }
+        }
+
+    private fun legacyFiles(server: Server, token: String): List<RemoteFile> =
         request(server, "/api/files", token) { connection ->
             val files = JSONObject(readBody(connection)).getJSONArray("files")
             List(files.length()) { index ->
                 val file = files.getJSONObject(index)
                 RemoteFile(file.getString("id"), file.getString("name"), file.getLong("size"))
+            }
+        }
+
+    override fun cover(server: Server, token: String, file: RemoteFile): ByteArray? =
+        request(server, "/api/covers/${file.id}", token) { connection ->
+            if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND) return@request null
+            checkStatus(connection)
+            connection.inputStream.use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > 5 * 1024 * 1024) return@request null
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
             }
         }
 

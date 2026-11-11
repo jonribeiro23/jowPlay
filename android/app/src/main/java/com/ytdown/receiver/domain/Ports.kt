@@ -23,6 +23,8 @@ interface PcConnection {
     /** Falha com NotPairedException se o PC não reconhecer mais o token. */
     fun listFiles(server: Server, token: String): List<RemoteFile>
 
+    fun cover(server: Server, token: String, file: RemoteFile): ByteArray? = null
+
     /** Copia o arquivo para `output`, informando (recebidos, total) em bytes. */
     fun download(server: Server, token: String, file: RemoteFile, output: OutputStream, onProgress: (Long, Long) -> Unit)
 }

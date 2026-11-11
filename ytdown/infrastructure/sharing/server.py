@@ -11,6 +11,7 @@ Decisões de segurança:
 from __future__ import annotations
 
 import ipaddress
+import hashlib
 import json
 import os
 import socket
@@ -21,7 +22,9 @@ from pathlib import Path
 
 from ytdown.application.sharing import SharingSession
 from ytdown.domain.errors import ShareError
+from ytdown.domain.errors import UnreadableAudio
 from ytdown.domain.sharing import TransferStatus
+from ytdown.infrastructure.metadata_reader import MutagenMetadataReader
 
 DISCOVERY_PORT = 47820
 HTTP_PORT = 47821
@@ -88,6 +91,13 @@ class _Handler(BaseHTTPRequestHandler):
                     for shared, size in self._session.available()
                 ]
                 self._send_json(200, {"files": files})
+        elif self.path == "/api/catalog":
+            if self._authorized():
+                items = (self._catalog_item(shared, size) for shared, size in self._session.available())
+                self._send_json(200, {"tracks": [item for item in items if item is not None]})
+        elif self.path.startswith("/api/covers/"):
+            if self._authorized():
+                self._send_cover(self.path.removeprefix("/api/covers/"))
         elif self.path.startswith("/api/files/"):
             if self._authorized():
                 self._send_file(self.path.removeprefix("/api/files/"))
@@ -112,6 +122,47 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(200, {"token": token, **self._owner.info()})
 
     # --- etapas
+
+    def _metadata(self, shared):
+        try:
+            reader = MutagenMetadataReader()
+            return reader.read(shared.path), reader.read_cover(shared.path)
+        except UnreadableAudio:
+            return None, None
+
+    def _catalog_item(self, shared, size):
+        info, cover = self._metadata(shared)
+        title = (info.title if info else None) or shared.path.stem
+        artist = (info.artist if info else None) or ""
+        try:
+            with shared.path.open("rb") as source:
+                before = os.fstat(source.fileno())
+                digest = hashlib.sha256()
+                while chunk := source.read(CHUNK_SIZE):
+                    digest.update(chunk)
+                after = os.fstat(source.fileno())
+            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                return None
+        except OSError:
+            return None
+        size = after.st_size
+        revision = hashlib.sha256(json.dumps([shared.name, title, artist, size, digest.hexdigest(),
+            hashlib.sha256(cover).hexdigest() if cover else None], ensure_ascii=False).encode()).hexdigest()
+        return {"id": shared.id, "name": shared.name, "size": size, "title": title,
+                "artist": artist, "cover_revision": hashlib.sha256(cover).hexdigest() if cover else None,
+                "revision": revision}
+
+    def _send_cover(self, file_id):
+        shared = self._session.get(file_id)
+        _, cover = self._metadata(shared) if shared else (None, None)
+        if not cover:
+            self._send_json(404, {"error": "not_found"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(len(cover)))
+        self.end_headers()
+        self.wfile.write(cover)
 
     def _allowed_client(self) -> bool:
         if self._owner.stopping:

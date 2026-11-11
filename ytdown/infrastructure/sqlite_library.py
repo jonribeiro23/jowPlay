@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import functools
 import os
+import secrets
 import sqlite3
 import threading
 from datetime import datetime
@@ -82,6 +83,13 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (playlist_id, position)
         );
         CREATE INDEX playlist_tracks_track ON playlist_tracks(track_id);
+    """),
+    (3, """
+        CREATE TABLE used_shared_ids (share_id TEXT PRIMARY KEY);
+        CREATE TABLE shared_track_ids (
+            track_id INTEGER PRIMARY KEY REFERENCES tracks(id) ON DELETE CASCADE,
+            share_id TEXT NOT NULL UNIQUE
+        );
     """),
 ]
 
@@ -337,6 +345,31 @@ class SqliteTrackRepository:
     @_locked
     def find_by_path(self, rel_path: str) -> Track | None:
         return self._one("SELECT {columns} FROM tracks WHERE rel_path = ?", rel_path)
+
+    @_locked
+    def shared_track_id(self, rel_path: str, previous_id: str | None = None) -> str | None:
+        """Identidade pública persistente para uma faixa existente, não reutilizada após exclusão."""
+        track = self.find_by_path(rel_path)
+        if track is None:
+            return None
+        row = self._db.execute("SELECT share_id FROM shared_track_ids WHERE track_id = ?", (track.id,)).fetchone()
+        if row:
+            return row[0]
+        # Reaproveita o ID do catálogo anterior quando ele ainda não pertence a outra faixa.
+        with self._db:
+            candidate = previous_id or "t_" + secrets.token_urlsafe(24)
+            while True:
+                claimed = self._db.execute("INSERT OR IGNORE INTO used_shared_ids VALUES (?)", (candidate,))
+                if claimed.rowcount:
+                    break
+                candidate = "t_" + secrets.token_urlsafe(24)
+            self._db.execute("INSERT INTO shared_track_ids VALUES (?, ?)", (track.id, candidate))
+        return candidate
+
+    @_locked
+    def find_by_shared_id(self, share_id: str) -> Track | None:
+        row = self._db.execute("SELECT track_id FROM shared_track_ids WHERE share_id = ?", (share_id,)).fetchone()
+        return self.get(row[0]) if row else None
 
     @_locked
     def list_tracks(self, query: TrackQuery = TrackQuery()) -> list[Track]:

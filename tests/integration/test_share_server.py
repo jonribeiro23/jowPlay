@@ -17,6 +17,7 @@ from ytdown.domain.errors import ShareError
 from ytdown.domain.sharing import TransferStatus
 from ytdown.infrastructure.sharing import server as server_module
 from ytdown.infrastructure.sharing.server import CHUNK_SIZE, DISCOVERY_REQUEST, MAX_BODY_SIZE, LocalShareServer
+from ytdown.infrastructure.sharing.device_store import JsonDeviceStore
 
 
 class LocalShareServerTests(unittest.TestCase):
@@ -60,6 +61,15 @@ class LocalShareServerTests(unittest.TestCase):
         info = json.loads(content)
         self.assertEqual((status, info["service"], info["id"], info["port"]), (200, "ytdown", "pc-de-teste", self.server.port))
 
+    def test_shared_identity_survives_store_and_session_recreation(self):
+        path = self.dir / "track.mp3"
+        path.write_bytes(b"audio")
+        store_path = self.dir / "registry.json"
+        first = SharingSession(JsonDeviceStore(store_path)).share(path)
+        second = SharingSession(JsonDeviceStore(store_path)).share(path)
+        self.assertEqual(first.id, second.id)
+        self.assertNotIn(str(path), first.id)
+
     def test_pairing_gives_a_working_token(self):
         token = self.pair()
         self.assertEqual(self.request("GET", "/api/files", token), (200, b'{"files": []}'))
@@ -85,6 +95,39 @@ class LocalShareServerTests(unittest.TestCase):
             for token in (None, "token-falso"):
                 with self.subTest(path=path, token=token):
                     self.assertEqual(self.request("GET", path, token)[0], 401)
+
+    def test_catalog_and_cover_require_authorization_and_reflect_changes(self):
+        shared, _ = self.share_file()
+        for path in ("/api/catalog", f"/api/covers/{shared.id}"):
+            for token in (None, "token-falso"):
+                self.assertEqual(self.request("GET", path, token)[0], 401)
+        token = self.pair()
+        info = mock.Mock(title="Título", artist="Artista")
+        with mock.patch.object(server_module.MutagenMetadataReader, "read", return_value=info), \
+             mock.patch.object(server_module.MutagenMetadataReader, "read_cover", return_value=b"cover one") as cover:
+            status, body = self.request("GET", "/api/catalog", token)
+            item = json.loads(body)["tracks"][0]
+            self.assertEqual((status, item["id"], item["title"], item["artist"]), (200, shared.id, "Título", "Artista"))
+            self.assertEqual(self.request("GET", f"/api/covers/{shared.id}", token), (200, b"cover one"))
+            cover.return_value = b"cover two"
+            updated = json.loads(self.request("GET", "/api/catalog", token)[1])["tracks"][0]
+            self.assertNotEqual(item["revision"], updated["revision"])
+            self.assertNotEqual(item["cover_revision"], updated["cover_revision"])
+            cover.return_value = None
+            self.assertIsNone(json.loads(self.request("GET", "/api/catalog", token)[1])["tracks"][0]["cover_revision"])
+            self.assertEqual(self.request("GET", f"/api/covers/{shared.id}", token)[0], 404)
+            self.assertEqual(self.request("GET", "/api/covers/desconhecido", token)[0], 404)
+
+    def test_revision_detects_changed_content_even_with_same_size_and_timestamp(self):
+        shared, _ = self.share_file(content=b"aaaa")
+        token = self.pair()
+        original_stat = shared.path.stat()
+        first = json.loads(self.request("GET", "/api/catalog", token)[1])["tracks"][0]
+        shared.path.write_bytes(b"bbbb")
+        import os
+        os.utime(shared.path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+        second = json.loads(self.request("GET", "/api/catalog", token)[1])["tracks"][0]
+        self.assertNotEqual(first["revision"], second["revision"])
 
     def test_download_returns_identical_bytes_and_updates_status(self):
         token = self.pair()

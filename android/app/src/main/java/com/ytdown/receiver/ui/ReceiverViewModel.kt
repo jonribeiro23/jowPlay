@@ -198,6 +198,22 @@ class ReceiverViewModel(
         }
     }
 
+    suspend fun cover(server: Server, file: RemoteFile): android.graphics.Bitmap? {
+        val token = tokens.get(server.id) ?: return null
+        return try {
+            withContext(io) {
+                connection.cover(server, token, file)?.let {
+                    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size, bounds)
+                    var sample = 1
+                    while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) sample *= 2
+                    android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size,
+                        android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+                }
+            }
+        } catch (_: IOException) { null }
+    }
+
     // --- estado
 
     private fun updateSearch(change: (Screen.Search) -> Screen.Search) {

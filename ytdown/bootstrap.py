@@ -22,6 +22,7 @@ from ytdown.infrastructure.thumbnails import FileThumbnailCache
 from ytdown.infrastructure.resources import asset
 from ytdown.infrastructure.sharing.device_store import JsonDeviceStore, default_store_path
 from ytdown.infrastructure.sharing.server import LocalShareServer
+from ytdown.infrastructure.sharing.library_resolver import LibraryShareResolver
 from ytdown.infrastructure.sqlite_library import SqliteTrackRepository, default_library_db_path
 from ytdown.infrastructure.sqlite_playlists import SqlitePlaylistRepository
 from ytdown.infrastructure.tags import MutagenTagWriter
@@ -71,8 +72,10 @@ def build_library(db_path: Path | None = None, settings_path: Path | None = None
     )
 
 
-def create_share_server(on_change: Callable[[], None]) -> LocalShareServer:
-    session = SharingSession(JsonDeviceStore(default_store_path()), on_change)
+def create_share_server(on_change: Callable[[], None], library: Library | None = None) -> LocalShareServer:
+    devices = JsonDeviceStore(default_store_path())
+    resolver = LibraryShareResolver(library.tracks, library.storage, devices) if library else None
+    session = SharingSession(devices, on_change, library=resolver)
     return LocalShareServer(session)
 
 
@@ -101,7 +104,7 @@ def run() -> int:
     player = QtAudioPlayer(app)
     playback = Playback(player, library.storage, tracks=library.tracks)
     extract_batch = build_extract_batch()
-    sharing = PhoneSharing(create_share_server)
+    sharing = PhoneSharing(lambda changed: create_share_server(changed, library))
     window = build_main_window(library, playback, extract_batch, sharing)
     if sys.platform == "win32":
         from ytdown.infrastructure.windows_taskbar import WindowsThumbnailControls

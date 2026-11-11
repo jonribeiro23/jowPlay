@@ -4,4 +4,6 @@ package com.ytdown.receiver.domain.model
 data class Server(val id: String, val name: String, val host: String, val port: Int)
 
 /** Um áudio oferecido pelo PC. */
-data class RemoteFile(val id: String, val name: String, val size: Long)
+data class RemoteFile(val id: String, val name: String, val size: Long,
+    val title: String = name.substringBeforeLast('.', name), val artist: String = "",
+    val coverRevision: String? = null)

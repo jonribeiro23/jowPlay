@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import secrets
+import threading
 from pathlib import Path
 
 
@@ -23,9 +24,11 @@ class JsonDeviceStore:
 
     def __init__(self, path: Path) -> None:
         self._path = path
+        self._lock = threading.RLock()
         data = self._load()
         self._server_id: str = data.get("server_id") or secrets.token_hex(8)
         self._devices: dict[str, str] = data.get("devices", {})  # hash do token -> nome
+        self._shared_ids: dict[str, str] = data.get("shared_ids", {})
         if "server_id" not in data:
             self._save()
 
@@ -35,12 +38,34 @@ class JsonDeviceStore:
 
     def add_device(self, name: str) -> str:
         token = secrets.token_urlsafe(32)
-        self._devices[_hash_token(token)] = name
-        self._save()
+        with self._lock:
+            self._devices[_hash_token(token)] = name
+            self._save()
         return token
 
     def knows(self, token: str) -> bool:
-        return _hash_token(token) in self._devices
+        with self._lock:
+            return _hash_token(token) in self._devices
+
+    def shared_id(self, path: Path) -> str:
+        """Preserva a identidade do caminho entre sessões do servidor."""
+        key = os.path.normcase(os.path.abspath(path))
+        with self._lock:
+            if key not in self._shared_ids:
+                self._shared_ids[key] = secrets.token_urlsafe(16)
+                self._save()
+            return self._shared_ids[key]
+
+    def existing_shared_id(self, path: Path) -> str | None:
+        with self._lock:
+            return self._shared_ids.get(os.path.normcase(os.path.abspath(path)))
+
+    def forget_shared_id(self, path: Path) -> None:
+        key = os.path.normcase(os.path.abspath(path))
+        with self._lock:
+            if key in self._shared_ids:
+                del self._shared_ids[key]
+                self._save()
 
     def _load(self) -> dict:
         try:
@@ -50,5 +75,6 @@ class JsonDeviceStore:
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        content = json.dumps({"server_id": self._server_id, "devices": self._devices}, ensure_ascii=False)
+        content = json.dumps({"server_id": self._server_id, "devices": self._devices,
+                              "shared_ids": self._shared_ids}, ensure_ascii=False)
         self._path.write_text(content, encoding="utf-8")

@@ -2,6 +2,9 @@ package com.ytdown.receiver.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +19,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import com.ytdown.receiver.domain.model.RemoteFile
 import com.ytdown.receiver.ui.ReceiverViewModel
@@ -44,7 +50,7 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(screen.files, key = { it.id }) { file ->
-                    FileCard(file, screen.transfers[file.id], screen.connection == ConnectionState.CONNECTED) {
+                    FileCard(file, screen, viewModel, screen.transfers[file.id], screen.connection == ConnectionState.CONNECTED) {
                         viewModel.download(screen.server, file)
                     }
                 }
@@ -73,10 +79,21 @@ private fun StatusMessage(screen: Screen.Files) {
 }
 
 @Composable
-private fun FileCard(file: RemoteFile, transfer: Transfer?, connected: Boolean, onDownload: () -> Unit) {
+private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: ReceiverViewModel, transfer: Transfer?, connected: Boolean, onDownload: () -> Unit) {
+    val cover by produceState<android.graphics.Bitmap?>(null, screen.server, file.id, file.coverRevision, connected) {
+        value = null
+        value = if (connected && file.coverRevision != null) viewModel.cover(screen.server, file) else null
+    }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(file.name, style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (cover != null) Image(cover!!.asImageBitmap(), contentDescription = "Capa", modifier = Modifier.size(56.dp))
+                else Text("♫", modifier = Modifier.size(56.dp), style = MaterialTheme.typography.headlineMedium)
+                Column {
+                    Text(file.title, style = MaterialTheme.typography.titleMedium)
+                    Text(file.artist.ifBlank { "Artista desconhecido" }, style = MaterialTheme.typography.bodySmall)
+                }
+            }
             Text(formatSize(file.size), style = MaterialTheme.typography.bodySmall)
             when (transfer) {
                 is Transfer.Running -> LinearProgressIndicator(
