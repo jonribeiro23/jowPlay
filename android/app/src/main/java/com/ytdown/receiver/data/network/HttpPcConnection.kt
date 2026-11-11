@@ -49,7 +49,9 @@ class HttpPcConnection : PcConnection {
                 val file = files.getJSONObject(index)
                 RemoteFile(file.getString("id"), file.getString("name"), file.getLong("size"),
                     file.optString("title", file.getString("name")), file.optString("artist", ""),
-                    if (file.isNull("cover_revision")) null else file.optString("cover_revision"))
+                    if (file.isNull("cover_revision")) null else file.optString("cover_revision"),
+                    if (file.isNull("revision")) null else file.optString("revision"),
+                    if (file.isNull("sha256")) null else file.optString("sha256"))
             }
         }
 

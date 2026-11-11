@@ -101,14 +101,15 @@ private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: Receiver
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Transfer.Saved -> {
-                    Text("Salvo em Música/ytDown", color = MaterialTheme.colorScheme.primary)
+                    Text("Sincronizado", color = MaterialTheme.colorScheme.primary)
                     OutlinedButton(onClick = onDownload, enabled = connected) { Text("Baixar de novo") }
                 }
                 is Transfer.Failed -> {
                     Text(transfer.message, color = MaterialTheme.colorScheme.error)
                     Button(onClick = onDownload, enabled = connected) { Text("Tentar de novo") }
                 }
-                null -> Button(onClick = onDownload, enabled = connected) { Text("Baixar") }
+                null -> if (file.id in screen.synced) Text("Sincronizado", color = MaterialTheme.colorScheme.primary)
+                    else Button(onClick = onDownload, enabled = connected) { Text("Fazer Download") }
             }
         }
     }

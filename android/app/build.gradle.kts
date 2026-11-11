@@ -7,6 +7,8 @@ plugins {
 android {
     namespace = "com.ytdown.receiver"
     compileSdk = 35
+    useLibrary("android.test.runner")
+    useLibrary("android.test.base")
 
     defaultConfig {
         applicationId = "com.ytdown.receiver"
@@ -14,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
     }
 
     compileOptions {

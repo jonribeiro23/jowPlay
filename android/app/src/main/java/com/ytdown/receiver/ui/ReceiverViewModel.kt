@@ -149,9 +149,13 @@ class ReceiverViewModel(
                 return
             }
             try {
-                val files = withContext(io) { connection.listFiles(server, token) }
+                val (files, synced) = withContext(io) {
+                    val files = connection.listFiles(server, token)
+                    files to files.filter { downloadAudio.isSynced(server, it) }.map { it.id }.toSet()
+                }
                 if (request != generation) return
-                updateFiles { it.copy(server = server, files = files, connection = ConnectionState.CONNECTED) }
+                updateFiles { it.copy(server = server, files = files, synced = synced,
+                    transfers = it.transfers.filterValues { transfer -> transfer !is Transfer.Saved }, connection = ConnectionState.CONNECTED) }
             } catch (_: NotPairedException) {
                 if (request != generation) return
                 tokens.remove(server.id)
@@ -186,7 +190,7 @@ class ReceiverViewModel(
                         }
                     }
                 }
-                Transfer.Saved
+                if (withContext(io) { downloadAudio.isSynced(server, file) }) Transfer.Saved else Transfer.Failed("Arquivo salvo; sincronização indisponível neste PC.")
             } catch (e: CancellationException) {
                 throw e
             } catch (_: NotAudioException) {

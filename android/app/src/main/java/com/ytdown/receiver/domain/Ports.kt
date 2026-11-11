@@ -33,6 +33,8 @@ interface PcConnection {
 interface AudioLibrary {
     /** Se `write` falhar, nada fica salvo. */
     fun save(name: String, mimeType: String, write: (OutputStream) -> Unit)
+    fun saveFor(server: Server, file: RemoteFile, name: String, mimeType: String, write: (OutputStream) -> Unit) = save(name, mimeType, write)
+    fun isSynced(server: Server, file: RemoteFile): Boolean = false
 }
 
 /** Tokens dos PCs já pareados, guardados entre aberturas do app. */

@@ -6,4 +6,4 @@ data class Server(val id: String, val name: String, val host: String, val port: 
 /** Um áudio oferecido pelo PC. */
 data class RemoteFile(val id: String, val name: String, val size: Long,
     val title: String = name.substringBeforeLast('.', name), val artist: String = "",
-    val coverRevision: String? = null)
+    val coverRevision: String? = null, val revision: String? = null, val sha256: String? = null)

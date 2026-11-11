@@ -150,7 +150,7 @@ class _Handler(BaseHTTPRequestHandler):
             hashlib.sha256(cover).hexdigest() if cover else None], ensure_ascii=False).encode()).hexdigest()
         return {"id": shared.id, "name": shared.name, "size": size, "title": title,
                 "artist": artist, "cover_revision": hashlib.sha256(cover).hexdigest() if cover else None,
-                "revision": revision}
+                "revision": revision, "sha256": digest.hexdigest()}
 
     def _send_cover(self, file_id):
         shared = self._session.get(file_id)

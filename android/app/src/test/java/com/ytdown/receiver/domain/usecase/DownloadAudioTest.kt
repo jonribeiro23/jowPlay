@@ -51,6 +51,26 @@ private class FakeLibrary : AudioLibrary {
 
 class DownloadAudioTest {
     @Test
+    fun acceptsMatchingSha256() {
+        val library = FakeLibrary()
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(AUDIO)
+            .joinToString("") { "%02x".format(it) }
+        DownloadAudio(FakePc(), library)(SERVER, "token", RemoteFile("1", "a.mp3", 5, sha256 = hash)) {}
+        assertArrayEquals(AUDIO, library.saved.getValue("a.mp3").second)
+    }
+    @Test
+    fun rejectsWrongHashAndWrongSizeWithoutSaving() {
+        val library = FakeLibrary()
+        val download = DownloadAudio(FakePc(), library)
+        assertThrows(IOException::class.java) {
+            download(SERVER, "token", RemoteFile("1", "a.mp3", 5, sha256 = "0".repeat(64))) {}
+        }
+        assertThrows(IOException::class.java) {
+            download(SERVER, "token", RemoteFile("1", "a.mp3", 6)) {}
+        }
+        assertTrue(library.saved.isEmpty())
+    }
+    @Test
     fun savesTheAudioWithItsTypeAndReportsProgress() {
         val library = FakeLibrary()
         val progress = mutableListOf<Float>()

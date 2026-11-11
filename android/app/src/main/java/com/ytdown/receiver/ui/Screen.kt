@@ -26,6 +26,7 @@ sealed interface Screen {
         val server: Server,
         val files: List<RemoteFile> = emptyList(),
         val transfers: Map<String, Transfer> = emptyMap(),
+        val synced: Set<String> = emptySet(),
         val connection: ConnectionState = ConnectionState.CONNECTING,
     ) : Screen
 }

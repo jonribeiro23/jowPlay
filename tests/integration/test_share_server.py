@@ -1,6 +1,7 @@
 """Testa o servidor com conexões reais, usando apenas o próprio computador."""
 
 import http.client
+import hashlib
 import json
 import socket
 import shutil
@@ -128,6 +129,8 @@ class LocalShareServerTests(unittest.TestCase):
         os.utime(shared.path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
         second = json.loads(self.request("GET", "/api/catalog", token)[1])["tracks"][0]
         self.assertNotEqual(first["revision"], second["revision"])
+        self.assertEqual(first["sha256"], hashlib.sha256(b"aaaa").hexdigest())
+        self.assertEqual(second["sha256"], hashlib.sha256(b"bbbb").hexdigest())
 
     def test_download_returns_identical_bytes_and_updates_status(self):
         token = self.pair()
