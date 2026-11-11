@@ -122,7 +122,7 @@ O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
 4. Abra o app no celular e escolha o PC. Na primeira vez, digite o código de 6 dígitos mostrado na janela do PC.
 5. Toque em **Baixar**. O áudio fica em `Música/ytDown`, com nome, autor, álbum e capa, e aparece nos players do celular.
 
-Enquanto a janela "Enviar para o celular" estiver aberta, novos envios entram na mesma lista. O compartilhamento termina quando essa janela é fechada. Faixas indisponíveis são deixadas de fora, com aviso.
+Novos envios entram na mesma lista mesmo após fechar a janela "Enviar para o celular". O servidor continua ativo até parar o compartilhamento pelo botão ou encerrar o ytDown no PC. O celular mostra o estado da conexão e tenta reconectar automaticamente após uma queda, inclusive se o endereço do PC mudar; o pareamento é preservado. Faixas indisponíveis são deixadas de fora, com aviso.
 
 Se o celular não encontrar o PC, digite no app o endereço mostrado na janela. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, desative o "isolamento de AP" (ou "isolamento de clientes") no roteador, ou use uma rede que não seja a de convidados.
 

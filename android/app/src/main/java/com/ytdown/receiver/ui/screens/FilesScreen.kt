@@ -23,13 +23,11 @@ import com.ytdown.receiver.ui.ReceiverViewModel
 import com.ytdown.receiver.ui.Screen
 import com.ytdown.receiver.ui.Transfer
 import com.ytdown.receiver.ui.components.AppScaffold
-import com.ytdown.receiver.ui.components.WhileResumed
+import com.ytdown.receiver.ui.ConnectionState
 import com.ytdown.receiver.ui.formatSize
 
 @Composable
 fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
-    WhileResumed(screen.server) { viewModel.filesLoop(screen.server) }
-
     AppScaffold(
         title = screen.server.name,
         action = { TextButton(onClick = viewModel::backToSearch) { Text("Trocar de PC") } },
@@ -46,7 +44,7 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(screen.files, key = { it.id }) { file ->
-                    FileCard(file, screen.transfers[file.id], screen.connected) {
+                    FileCard(file, screen.transfers[file.id], screen.connection == ConnectionState.CONNECTED) {
                         viewModel.download(screen.server, file)
                     }
                 }
@@ -57,9 +55,11 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
 
 @Composable
 private fun StatusMessage(screen: Screen.Files) {
-    if (!screen.connected) {
+    if (screen.connection == ConnectionState.CONNECTING) {
+        Text("Conectando ao PC...", Modifier.padding(vertical = 8.dp))
+    } else if (screen.connection == ConnectionState.DISCONNECTED) {
         Text(
-            "Sem conexão com o PC. Verifique se a janela \"Enviar para o celular\" está aberta e " +
+            "Sem conexão com o PC. Verifique se o ytDown está aberto e " +
                 "se o celular está no Wi-Fi da mesma rede.",
             Modifier.padding(vertical = 8.dp),
             color = MaterialTheme.colorScheme.error,

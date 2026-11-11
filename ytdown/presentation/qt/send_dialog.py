@@ -1,4 +1,4 @@
-"""Janela "Enviar para o celular" em Qt. O servidor funciona apenas enquanto ela está aberta."""
+"""Janela de compartilhamento; o servidor pertence à sessão do aplicativo."""
 
 from __future__ import annotations
 
@@ -50,7 +50,6 @@ class SendDialog(QDialog):
         self.setObjectName("sendDialog")
         self.setWindowTitle(TITLE)
         self.setModal(False)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self._stopped = False
         self._changed.connect(self._refresh)
         self.server = create_server(self._notify_change)
@@ -139,9 +138,11 @@ class SendDialog(QDialog):
         self.server.stop()
         self.sharing_stopped.emit()
         self.done(QDialog.DialogCode.Rejected)
+        self.deleteLater()
 
-    def reject(self) -> None:  # Esc e o X da janela também param o compartilhamento.
-        self.stop_sharing()
+    def reject(self) -> None:
+        # Fechar a janela não encerra a sessão nem interrompe transferências.
+        self.hide()
 
 
 class PhoneSharing:

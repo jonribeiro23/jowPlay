@@ -10,6 +10,8 @@ sealed interface Transfer {
     data class Failed(val message: String) : Transfer
 }
 
+enum class ConnectionState { CONNECTING, CONNECTED, DISCONNECTED }
+
 /** O que a tela mostra em cada momento. */
 sealed interface Screen {
     data class Search(
@@ -24,6 +26,6 @@ sealed interface Screen {
         val server: Server,
         val files: List<RemoteFile> = emptyList(),
         val transfers: Map<String, Transfer> = emptyMap(),
-        val connected: Boolean = true,
+        val connection: ConnectionState = ConnectionState.CONNECTING,
     ) : Screen
 }

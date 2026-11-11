@@ -306,6 +306,10 @@ pelo menu da árvore) passam por `send_tracks_to_phone`, que resolve os caminhos
 `PhoneSharing`. Ele mantém uma única janela de envio: novos envios entram na lista aberta.
 O protocolo com o celular não mudou; o app Android da 1.0 continua compatível.
 
+## Sessão de compartilhamento (JOW-50)
+
+O servidor pertence a `PhoneSharing` durante a execução do PC: fechar o diálogo apenas o esconde, e novos envios reutilizam a sessão e sua lista. Parar explicitamente ou encerrar o aplicativo fecha o servidor e conexões. No Android, o ViewModel mantém a atualização enquanto existir, independentemente da tela retomada. Após erro de rede, mantém o token, sinaliza desconexão e procura novamente o mesmo identificador de PC, permitindo atualizar o endereço. Respostas antigas não devem alterar uma sessão escolhida posteriormente. A execução em segundo plano fica sujeita ao lifecycle e às restrições do Android; não há serviço persistente.
+
 ## Botões na miniatura da barra de tarefas (JOW-48)
 
 `WindowsThumbnailControls` (infrastructure) usa `ITaskbarList3` via ctypes para anterior,

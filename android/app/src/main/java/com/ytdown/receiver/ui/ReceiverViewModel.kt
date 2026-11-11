@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import kotlin.coroutines.coroutineContext
@@ -32,7 +34,7 @@ private const val POLL_INTERVAL_MS = 2_000L
 private const val PROGRESS_INTERVAL_MS = 100L
 
 private const val MANUAL_CONNECT_FAILED =
-    "Não foi possível conectar. Confira o endereço e se a janela \"Enviar para o celular\" está aberta no PC."
+    "Não foi possível conectar. Confira o endereço e se o ytDown está aberto no PC."
 private const val WRONG_CODE = "Código incorreto. Confira o código na tela do PC."
 private const val NO_CONNECTION = "Sem conexão com o PC. Tente de novo."
 private const val PAIR_AGAIN = "O PC pediu um novo pareamento."
@@ -45,6 +47,8 @@ class ReceiverViewModel(
     private val tokens: PairingTokens,
     private val downloadAudio: DownloadAudio,
     private val deviceName: String,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val pollInterval: Long = POLL_INTERVAL_MS,
 ) : ViewModel() {
 
     private val _screen = MutableStateFlow<Screen>(Screen.Search())
@@ -52,16 +56,24 @@ class ReceiverViewModel(
 
     /** Falso depois de "Trocar de PC", para o app não voltar sozinho ao mesmo PC. */
     private var autoConnect = true
+    private var filesJob: Job? = null
+    private var generation = 0L
 
     // --- busca
 
     /** Procura PCs enquanto a tela de busca estiver aberta. */
     suspend fun searchLoop() {
         while (coroutineContext.isActive && _screen.value is Screen.Search) {
+            val request = generation
             val servers = try {
-                withContext(Dispatchers.IO) { discovery.discover() }
+                withContext(io) { discovery.discover() }
             } catch (_: IOException) {
                 emptyList()
+            }
+            if (_screen.value !is Screen.Search) return
+            if (request != generation || (_screen.value as Screen.Search).busy) {
+                delay(pollInterval)
+                continue
             }
             val only = servers.singleOrNull()
             if (autoConnect && only != null && tokens.get(only.id) != null) {
@@ -69,26 +81,32 @@ class ReceiverViewModel(
                 return
             }
             updateSearch { it.copy(servers = servers) }
-            delay(POLL_INTERVAL_MS)
+            delay(pollInterval)
         }
     }
 
     fun open(server: Server) {
-        _screen.value = if (tokens.get(server.id) != null) Screen.Files(server) else Screen.Pair(server)
+        filesJob?.cancel()
+        generation++
+        if (tokens.get(server.id) != null) startFiles(server) else _screen.value = Screen.Pair(server)
     }
 
     fun connectManually(address: String) {
+        val request = ++generation
         updateSearch { it.copy(busy = true, message = null) }
         viewModelScope.launch {
             try {
-                open(withContext(Dispatchers.IO) { connection.connectManually(address) })
+                val server = withContext(io) { connection.connectManually(address) }
+                if (request == generation) open(server)
             } catch (_: IOException) {
-                updateSearch { it.copy(busy = false, message = MANUAL_CONNECT_FAILED) }
+                if (request == generation) updateSearch { it.copy(busy = false, message = MANUAL_CONNECT_FAILED) }
             }
         }
     }
 
     fun backToSearch() {
+        generation++
+        filesJob?.cancel()
         autoConnect = false
         _screen.value = Screen.Search()
     }
@@ -96,56 +114,75 @@ class ReceiverViewModel(
     // --- pareamento
 
     fun pair(server: Server, code: String) {
+        val request = ++generation
         _screen.value = Screen.Pair(server, busy = true)
         viewModelScope.launch {
-            _screen.value = try {
-                val token = withContext(Dispatchers.IO) { connection.pair(server, code, deviceName) }
-                tokens.save(server.id, token)
-                Screen.Files(server)
+            try {
+                val token = withContext(io) { connection.pair(server, code, deviceName) }
+                if (request == generation) {
+                    tokens.save(server.id, token)
+                    startFiles(server)
+                }
             } catch (_: WrongCodeException) {
-                Screen.Pair(server, message = WRONG_CODE)
+                if (request == generation) _screen.value = Screen.Pair(server, message = WRONG_CODE)
             } catch (_: IOException) {
-                Screen.Pair(server, message = NO_CONNECTION)
+                if (request == generation) _screen.value = Screen.Pair(server, message = NO_CONNECTION)
             }
         }
     }
 
     // --- arquivos
 
-    /** Atualiza a lista enquanto a tela de arquivos estiver aberta. */
-    suspend fun filesLoop(server: Server) {
-        while (coroutineContext.isActive && (_screen.value as? Screen.Files)?.server == server) {
+    private fun startFiles(server: Server) {
+        filesJob?.cancel()
+        val request = generation
+        _screen.value = Screen.Files(server)
+        filesJob = viewModelScope.launch { filesLoop(server, request) }
+    }
+
+    private suspend fun filesLoop(initial: Server, request: Long) {
+        var server = initial
+        while (coroutineContext.isActive && request == generation) {
             val token = tokens.get(server.id)
             if (token == null) {
                 _screen.value = Screen.Pair(server)
                 return
             }
             try {
-                val files = withContext(Dispatchers.IO) { connection.listFiles(server, token) }
-                updateFiles { it.copy(files = files, connected = true) }
+                val files = withContext(io) { connection.listFiles(server, token) }
+                if (request != generation) return
+                updateFiles { it.copy(server = server, files = files, connection = ConnectionState.CONNECTED) }
             } catch (_: NotPairedException) {
+                if (request != generation) return
                 tokens.remove(server.id)
                 _screen.value = Screen.Pair(server, message = PAIR_AGAIN)
                 return
             } catch (_: IOException) {
-                updateFiles { it.copy(connected = false) }
+                if (request != generation) return
+                updateFiles { it.copy(connection = ConnectionState.DISCONNECTED) }
+                val found = try {
+                    withContext(io) { discovery.discover().firstOrNull { it.id == server.id } }
+                } catch (_: IOException) { null }
+                if (request != generation) return
+                if (found != null) server = found
             }
-            delay(POLL_INTERVAL_MS)
+            delay(pollInterval)
         }
     }
 
     fun download(server: Server, file: RemoteFile) {
         val token = tokens.get(server.id) ?: return
+        val request = generation
         setTransfer(file, Transfer.Running(0f))
         viewModelScope.launch {
             var lastUpdate = 0L
             val result = try {
-                withContext(Dispatchers.IO) {
+                withContext(io) {
                     downloadAudio(server, token, file) { progress ->
                         val now = System.currentTimeMillis()
                         if (now - lastUpdate > PROGRESS_INTERVAL_MS) {
                             lastUpdate = now
-                            setTransfer(file, Transfer.Running(progress))
+                            if (request == generation) setTransfer(file, Transfer.Running(progress))
                         }
                     }
                 }
@@ -157,7 +194,7 @@ class ReceiverViewModel(
             } catch (_: IOException) {
                 Transfer.Failed(DOWNLOAD_FAILED)
             }
-            setTransfer(file, result)
+            if (request == generation) setTransfer(file, result)
         }
     }
 

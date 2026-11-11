@@ -134,11 +134,15 @@ class SendDialogTests(unittest.TestCase):
         with self.assertRaises((OSError, http.client.HTTPException)):
             phone.request("GET", "/api/files")
 
-    def test_closing_the_window_also_stops_sharing(self):
+    def test_closing_the_window_keeps_sharing(self):
         dialog = self.open_dialog()
         dialog.add(Path("a.mp3"))
         dialog.close()
-        self.assertTrue(dialog.server.stopping)
+        self.assertFalse(dialog.server.stopping)
+        self.assertFalse(dialog.isVisible())
+        phone = Phone(self, dialog.server.port)
+        self.assertEqual(phone.pair(dialog.server.pairing_code), 200)
+        self.assertEqual(phone.request("GET", "/api/files")[0], 200)
 
 
 class PhoneSharingTests(unittest.TestCase):
@@ -178,6 +182,18 @@ class PhoneSharingTests(unittest.TestCase):
         self.sharing.send([])
         self.assertIsNone(self.sharing.dialog)
         self.assertEqual(self.created, [])
+
+    def test_close_reopen_and_application_shutdown(self):
+        self.sharing.send([Path("a.mp3")])
+        dialog = self.sharing.dialog
+        server = dialog.server
+        dialog.close()
+        self.sharing.send([Path("b.mp3")])
+        self.assertIs(self.sharing.dialog, dialog)
+        self.assertEqual(len(self.created), 1)
+        self.assertEqual([name for name, _ in dialog.rows()], ["a.mp3", "b.mp3"])
+        self.sharing.stop()
+        self.assertTrue(server.stopping)
 
 
 class ExtractPageSendTests(unittest.TestCase):
