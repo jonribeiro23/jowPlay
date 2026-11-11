@@ -204,6 +204,9 @@ class ReceiverViewModel(
     fun download(server: Server, file: RemoteFile) {
         val current = _screen.value as? Screen.Files ?: return
         if (current.server.id != server.id || tokens.get(server.id) == null) return
+        val latest = current.files.firstOrNull { it.id == file.id } ?: return
+        if (latest.revision != file.revision || latest.sha256 != file.sha256 ||
+            file.id in current.synced || current.transfers[file.id] == Transfer.Saved) return
         val key = DownloadKey(server.id, file.id, file.revision, file.sha256)
         if (!pending.add(key)) return
         setTransfer(file, Transfer.Queued)

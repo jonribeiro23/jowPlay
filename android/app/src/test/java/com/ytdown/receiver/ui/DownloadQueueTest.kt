@@ -22,6 +22,7 @@ class DownloadQueueTest {
     private val calls = mutableListOf<String>()
     private var offline = false
     private var fail = false
+    private var synced = false
     private val tokens = object : PairingTokens {
         override fun get(serverId: String) = "token"
         override fun save(serverId: String, token: String) {}
@@ -43,12 +44,25 @@ class DownloadQueueTest {
     }
     private val library = object : AudioLibrary {
         override fun save(name: String, mimeType: String, write: (OutputStream) -> Unit) { write(ByteArrayOutputStream()) }
+        override fun isSynced(server: Server, file: RemoteFile) = synced
     }
     private fun model() = ReceiverViewModel(object : ServerDiscovery {
         override fun discover() = listOf(server)
     }, pc, tokens, DownloadAudio(pc, library), "phone", dispatcher, 100)
     @Before fun setup() = Dispatchers.setMain(dispatcher)
     @After fun cleanup() = Dispatchers.resetMain()
+
+    @Test fun synchronizedAndStaleItemsCannotBeQueued() = runTest(dispatcher) {
+        synced = true
+        val vm = model(); vm.open(server); runCurrent()
+        vm.download(server, files[0]); runCurrent()
+        assertTrue(calls.isEmpty())
+        synced = false
+        advanceTimeBy(100); runCurrent()
+        vm.download(server, files[0].copy(revision = "outdated")); runCurrent()
+        assertTrue(calls.isEmpty())
+        vm.backToSearch()
+    }
 
     @Test fun queuesInOrderDeduplicatesAndContinuesAfterFailure() = runTest(dispatcher) {
         val vm = model(); vm.open(server); runCurrent()

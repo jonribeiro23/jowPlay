@@ -1,37 +1,26 @@
 package com.ytdown.receiver.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ytdown.receiver.domain.model.RemoteFile
-import com.ytdown.receiver.ui.ReceiverViewModel
-import com.ytdown.receiver.ui.Screen
-import com.ytdown.receiver.ui.Transfer
+import com.ytdown.receiver.ui.*
 import com.ytdown.receiver.ui.components.AppScaffold
-import com.ytdown.receiver.ui.ConnectionState
-import com.ytdown.receiver.ui.formatSize
+import kotlin.math.roundToInt
 
 @Composable
 fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
@@ -39,21 +28,17 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
         title = screen.server.name,
         action = { TextButton(onClick = viewModel::backToSearch) { Text("Trocar de PC") } },
     ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .fillMaxSize(),
-        ) {
+        Column(Modifier.padding(padding).fillMaxSize()) {
             StatusMessage(screen)
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp),
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 150.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(screen.files, key = { it.id }) { file ->
-                    FileCard(file, screen, viewModel, screen.transfers[file.id], screen.connection == ConnectionState.CONNECTED) {
-                        viewModel.download(screen.server, file)
-                    }
+                    FileCard(file, screen, viewModel) { viewModel.download(screen.server, file) }
                 }
             }
         }
@@ -62,56 +47,55 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
 
 @Composable
 private fun StatusMessage(screen: Screen.Files) {
-    if (screen.connection == ConnectionState.CONNECTING) {
-        Text("Conectando ao PC...", Modifier.padding(vertical = 8.dp))
-    } else if (screen.connection == ConnectionState.DISCONNECTED) {
-        Text(
-            "Sem conexão com o PC. Verifique se o ytDown está aberto e " +
-                "se o celular está no Wi-Fi da mesma rede.",
-            Modifier.padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.error,
-        )
-    } else if (screen.files.isEmpty()) {
-        Text(
-            "Nenhum áudio disponível. No PC, clique em \"Enviar para o celular\" depois de extrair um áudio.",
-            Modifier.padding(vertical = 8.dp),
-        )
+    val message = when {
+        screen.connection == ConnectionState.CONNECTING -> "Conectando ao PC..."
+        screen.connection == ConnectionState.DISCONNECTED -> "Sem conexão com o PC. Verifique se o ytDown está aberto e se o celular está no Wi-Fi da mesma rede."
+        screen.files.isEmpty() -> "Nenhum áudio disponível. No PC, clique em \"Enviar para o celular\" depois de extrair um áudio."
+        else -> null
     }
+    if (message != null) Text(
+        message, Modifier.fillMaxWidth().padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        color = if (screen.connection == ConnectionState.DISCONNECTED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+    )
 }
 
 @Composable
-private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: ReceiverViewModel, transfer: Transfer?, connected: Boolean, onDownload: () -> Unit) {
+private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: ReceiverViewModel, onDownload: () -> Unit) {
+    val connected = screen.connection == ConnectionState.CONNECTED
+    val transfer = screen.transfers[file.id]
+    val synced = transfer == Transfer.Saved || file.id in screen.synced
+    val enabled = connected && !synced && transfer !is Transfer.Queued && transfer !is Transfer.Running
+    val status = when {
+        synced -> "Sincronizado"
+        transfer is Transfer.Queued -> "Download na fila"
+        transfer is Transfer.Running -> "Baixando ${ (transfer.progress.coerceIn(0f, 1f) * 100).roundToInt() }%"
+        transfer is Transfer.Failed -> "Falha no download. Toque para tentar novamente"
+        else -> "Fazer Download"
+    }
     val cover by produceState<android.graphics.Bitmap?>(null, screen.server, file.id, file.coverRevision, connected) {
-        value = null
         value = if (connected && file.coverRevision != null) viewModel.cover(screen.server, file) else null
     }
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (cover != null) Image(cover!!.asImageBitmap(), contentDescription = "Fazer Download", modifier = Modifier.size(56.dp).clickable(enabled = connected, onClick = onDownload))
-                else Text("♫", modifier = Modifier.size(56.dp).clickable(enabled = connected, onClick = onDownload), style = MaterialTheme.typography.headlineMedium)
-                Column {
-                    Text(file.title, style = MaterialTheme.typography.titleMedium)
-                    Text(file.artist.ifBlank { "Artista desconhecido" }, style = MaterialTheme.typography.bodySmall)
+        Column {
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(1f)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .clickable(enabled = enabled, onClickLabel = "Fazer Download de ${file.title}", onClick = onDownload)
+                    .semantics { contentDescription = "${file.title}. $status"; liveRegion = LiveRegionMode.Polite },
+            ) {
+                if (cover != null) Image(cover!!.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Text("♫", Modifier.align(Alignment.Center), style = MaterialTheme.typography.displayLarge)
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha = 0.78f)).padding(8.dp)) {
+                    Text(status, color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    if (transfer is Transfer.Running) LinearProgressIndicator(
+                        progress = { transfer.progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    )
                 }
             }
-            Text(formatSize(file.size), style = MaterialTheme.typography.bodySmall)
-            when (transfer) {
-                Transfer.Queued -> Text("Download na fila")
-                is Transfer.Running -> LinearProgressIndicator(
-                    progress = { transfer.progress },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Transfer.Saved -> {
-                    Text("Sincronizado", color = MaterialTheme.colorScheme.primary)
-                    OutlinedButton(onClick = onDownload, enabled = connected) { Text("Baixar de novo") }
-                }
-                is Transfer.Failed -> {
-                    Text(transfer.message, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = onDownload, enabled = connected) { Text("Tentar de novo") }
-                }
-                null -> if (file.id in screen.synced) Text("Sincronizado", color = MaterialTheme.colorScheme.primary)
-                    else Button(onClick = onDownload, enabled = connected) { Text("Fazer Download") }
+            Column(Modifier.padding(10.dp)) {
+                Text(file.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(file.artist.ifBlank { "Artista desconhecido" }, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (transfer is Transfer.Failed && !synced) Text(transfer.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
