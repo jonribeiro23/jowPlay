@@ -20,6 +20,16 @@ class LibraryShareResolver:
             self.devices.forget_shared_id(path)
         return share_id
 
+    def available(self):
+        for track in self.tracks.list_tracks():
+            try:
+                path = self.storage.absolute(track.rel_path)
+                share_id = self.identify(path)
+                if share_id:
+                    yield share_id, path
+            except (OSError, LibraryError):
+                continue
+
     def resolve(self, share_id: str) -> Path | None:
         track = self.tracks.find_by_shared_id(share_id)
         if track is None:

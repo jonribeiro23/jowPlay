@@ -17,6 +17,9 @@ import os
 import socket
 import socketserver
 import threading
+import queue
+import ctypes
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -32,6 +35,27 @@ DISCOVERY_REQUEST = b"YTDOWN_DISCOVER_V1"
 PROTOCOL_VERSION = 1
 MAX_BODY_SIZE = 1024
 CHUNK_SIZE = 64 * 1024
+
+
+def _change_stamp(source, stat):
+    """Windows st_ctime is creation time; use NTFS change time instead."""
+    if sys.platform != "win32":
+        return stat.st_ctime_ns
+    try:
+        import msvcrt
+        class BasicInfo(ctypes.Structure):
+            _fields_ = [("creation", ctypes.c_longlong), ("access", ctypes.c_longlong),
+                        ("write", ctypes.c_longlong), ("change", ctypes.c_longlong),
+                        ("attributes", ctypes.c_uint32)]
+        info = BasicInfo()
+        function = ctypes.windll.kernel32.GetFileInformationByHandleEx
+        function.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+        function.restype = ctypes.c_int
+        if function(msvcrt.get_osfhandle(source.fileno()), 0, ctypes.byref(info), ctypes.sizeof(info)):
+            return info.change
+    except (OSError, ValueError):
+        pass
+    return None  # No trustworthy change stamp: hash again.
 
 
 def is_private(address: str) -> bool:
@@ -93,8 +117,7 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send_json(200, {"files": files})
         elif self.path == "/api/catalog":
             if self._authorized():
-                items = (self._catalog_item(shared, size) for shared, size in self._session.available())
-                self._send_json(200, {"tracks": [item for item in items if item is not None]})
+                self._send_catalog()
         elif self.path.startswith("/api/covers/"):
             if self._authorized():
                 self._send_cover(self.path.removeprefix("/api/covers/"))
@@ -123,6 +146,37 @@ class _Handler(BaseHTTPRequestHandler):
 
     # --- etapas
 
+    def _send_catalog(self):
+        # HTTP chunked whitespace keeps the client's read timeout from expiring while
+        # the first catalog hashes a large library. Whitespace is valid before JSON.
+        results = queue.Queue(maxsize=1)
+        def collect():
+            try:
+                items = (self._catalog_item(shared, size) for shared, size in self._session.available())
+                results.put(json.dumps({"tracks": [item for item in items if item is not None]}, ensure_ascii=False).encode())
+            except Exception:
+                results.put(None)
+        self._owner._start_collector(collect)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+        try:
+            while not self._owner.stopping:
+                try:
+                    content = results.get(timeout=1)
+                    if content is None:
+                        self.close_connection = True
+                        return
+                    self.wfile.write(f"{len(content):X}\r\n".encode() + content + b"\r\n0\r\n\r\n")
+                    self.wfile.flush()
+                    return
+                except queue.Empty:
+                    self.wfile.write(b"1\r\n \r\n")
+                    self.wfile.flush()
+        except OSError:
+            self.close_connection = True
+
     def _metadata(self, shared):
         try:
             reader = MutagenMetadataReader()
@@ -137,20 +191,35 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             with shared.path.open("rb") as source:
                 before = os.fstat(source.fileno())
-                digest = hashlib.sha256()
-                while chunk := source.read(CHUNK_SIZE):
-                    digest.update(chunk)
+                change = _change_stamp(source, before)
+                key = (str(shared.path), before.st_size, before.st_mtime_ns, change)
+                with self._owner._catalog_lock:
+                    cached = self._owner._hash_cache.get(shared.id)
+                if change is not None and cached and cached[0] == key:
+                    file_hash = cached[1]
+                else:
+                    digest = hashlib.sha256()
+                    while chunk := source.read(CHUNK_SIZE):
+                        if self._owner.stopping:
+                            return None
+                        digest.update(chunk)
+                    file_hash = digest.hexdigest()
                 after = os.fstat(source.fileno())
-            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                after_change = _change_stamp(source, after)
+            if (before.st_size, before.st_mtime_ns, change) != (after.st_size, after.st_mtime_ns, after_change):
                 return None
+            if change is not None:
+                with self._owner._catalog_lock:
+                    self._owner._hash_cache[shared.id] = (key, file_hash)
         except OSError:
             return None
         size = after.st_size
-        revision = hashlib.sha256(json.dumps([shared.name, title, artist, size, digest.hexdigest(),
+        revision = hashlib.sha256(json.dumps([shared.name, title, artist, size, file_hash,
             hashlib.sha256(cover).hexdigest() if cover else None], ensure_ascii=False).encode()).hexdigest()
-        return {"id": shared.id, "name": shared.name, "size": size, "title": title,
+        item = {"id": shared.id, "name": shared.name, "size": size, "title": title,
                 "artist": artist, "cover_revision": hashlib.sha256(cover).hexdigest() if cover else None,
-                "revision": revision, "sha256": digest.hexdigest()}
+                "revision": revision, "sha256": file_hash}
+        return item
 
     def _send_cover(self, file_id):
         shared = self._session.get(file_id)
@@ -279,6 +348,9 @@ class LocalShareServer:
         self._threads: list[threading.Thread] = []
         self._connections: set[socket.socket] = set()
         self._connections_lock = threading.Lock()
+        self._catalog_lock = threading.Lock()
+        self._hash_cache = {}
+        self._collectors = set()
 
     # --- ShareServer
 
@@ -321,6 +393,13 @@ class LocalShareServer:
         self._close_open_connections()
         for thread in self._threads:
             thread.join(timeout=2)
+        while True:
+            with self._catalog_lock:
+                collectors = list(self._collectors)
+            if not collectors:
+                break
+            for collector in collectors:
+                collector.join()
         if self._udp:
             self._udp.close()
 
@@ -334,6 +413,20 @@ class LocalShareServer:
         return self.session.statuses()
 
     # --- detalhes
+
+    def _start_collector(self, target):
+        def run():
+            try:
+                target()
+            finally:
+                with self._catalog_lock:
+                    self._collectors.discard(threading.current_thread())
+        thread = threading.Thread(target=run, daemon=True)
+        with self._catalog_lock:
+            if self.stopping:
+                return
+            self._collectors.add(thread)
+            thread.start()
 
     def info(self) -> dict:
         return {

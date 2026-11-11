@@ -45,16 +45,18 @@ class SendDialog(QDialog):
     sharing_stopped = Signal()
     _changed = Signal()
 
-    def __init__(self, create_server: ShareServerFactory, parent: QWidget | None = None) -> None:
+    def __init__(self, create_server: ShareServerFactory, parent: QWidget | None = None, managed: bool = False) -> None:
         super().__init__(parent)
         self.setObjectName("sendDialog")
         self.setWindowTitle(TITLE)
         self.setModal(False)
         self._stopped = False
+        self._managed = managed
         self._changed.connect(self._refresh)
         self.server = create_server(self._notify_change)
         try:
-            self.server.start()
+            if not managed:
+                self.server.start()
         except Exception:
             # Sem servidor a janela ficaria vazia e sem utilidade; ela nem chega a aparecer.
             self._stopped = True
@@ -96,6 +98,8 @@ class SendDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.addStretch()
         self.stop_button = QPushButton(STOP_LABEL)
+        if self._managed:
+            self.stop_button.setText("Fechar")
         self.stop_button.setObjectName("stopSharing")
         self.stop_button.setAutoDefault(False)
         self.stop_button.clicked.connect(self.stop_sharing)
@@ -135,7 +139,8 @@ class SendDialog(QDialog):
         if self._stopped:
             return
         self._stopped = True
-        self.server.stop()
+        if not self._managed:
+            self.server.stop()
         self.sharing_stopped.emit()
         self.done(QDialog.DialogCode.Rejected)
         self.deleteLater()
@@ -152,20 +157,44 @@ class PhoneSharing:
         self._create_server = create_server
         self.parent = parent
         self.dialog: SendDialog | None = None
+        self.server = None
+
+    def start(self) -> None:
+        if self.server is None:
+            server = self._create_server(self._notify_change)
+            server.start()
+            self.server = server
+
+    def _notify_change(self) -> None:
+        if self.dialog is not None:
+            self.dialog._notify_change()
 
     def send(self, paths: list[Path]) -> None:
         """Pode lançar ShareError se o compartilhamento não iniciar (ex.: porta ocupada)."""
         if not paths:
             return
         if self.dialog is None:
-            self.dialog = SendDialog(self._create_server, self.parent)
+            factory = (lambda _: self.server) if self.server is not None else self._create_server
+            self.dialog = SendDialog(factory, self.parent, managed=self.server is not None)
             self.dialog.sharing_stopped.connect(self._on_stopped)
         for path in paths:
             self.dialog.add(path)
 
+    def show_pairing(self) -> None:
+        if self.dialog is None:
+            factory = (lambda _: self.server) if self.server is not None else self._create_server
+            self.dialog = SendDialog(factory, self.parent, managed=self.server is not None)
+            self.dialog.sharing_stopped.connect(self._on_stopped)
+        self.dialog.show()
+        self.dialog.raise_()
+        self.dialog.activateWindow()
+
     def stop(self) -> None:
         if self.dialog is not None:
             self.dialog.stop_sharing()
+        if self.server is not None:
+            self.server.stop()
+            self.server = None
 
     def _on_stopped(self) -> None:
         self.dialog = None

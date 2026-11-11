@@ -14,6 +14,30 @@ from ytdown.infrastructure.sqlite_library import SqliteTrackRepository
 
 
 class SharedLibraryIdentityTests(unittest.TestCase):
+    def test_catalog_tracks_library_without_explicit_share_and_survives_restart(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            storage = FileSystemLibraryStorage(root)
+            devices = JsonDeviceStore(root / "pairing.json")
+            tracks = SqliteTrackRepository(root / "library.db")
+            try:
+                path = root / "song.mp3"
+                path.write_bytes(b"audio")
+                track = tracks.add(Track(path.name, "Song", datetime.now()))
+                session = SharingSession(devices, library=LibraryShareResolver(tracks, storage, devices))
+                first = session.available()[0][0]
+                restarted = SharingSession(devices, library=LibraryShareResolver(tracks, storage, devices))
+                self.assertEqual(restarted.available()[0][0].id, first.id)
+                moved = root / "renamed.mp3"
+                path.rename(moved)
+                tracks.update(replace(track, rel_path=moved.name))
+                self.assertEqual(restarted.get(first.id).path, moved)
+                tracks.remove(track.id)
+                self.assertEqual(restarted.available(), [])
+                self.assertIsNone(restarted.get(first.id))
+            finally:
+                tracks.close()
+
     def test_file_shared_before_registration_is_promoted_without_changing_id(self):
         with tempfile.TemporaryDirectory() as temp, ExitStack() as stack:
             root = Path(temp)

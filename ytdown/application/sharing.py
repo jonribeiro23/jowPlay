@@ -80,7 +80,7 @@ class SharingSession:
         with self._lock:
             shared = self._files.get(file_id)
             library_file = file_id in self._library_ids
-        if shared and library_file:
+        if self._library and (library_file or shared is None):
             path = self._library.resolve(file_id)
             return SharedFile(file_id, path) if path else None
         return shared
@@ -89,6 +89,9 @@ class SharingSession:
         """Arquivos que ainda existem, com o tamanho em bytes."""
         with self._lock:
             ids = list(self._files)
+        if self._library and hasattr(self._library, "available"):
+            known = set(ids)
+            ids.extend(file_id for file_id, _ in self._library.available() if file_id not in known)
         result = []
         for file_id in ids:
             shared = self.get(file_id)

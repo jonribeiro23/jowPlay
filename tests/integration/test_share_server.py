@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -22,6 +23,45 @@ from ytdown.infrastructure.sharing.device_store import JsonDeviceStore
 
 
 class LocalShareServerTests(unittest.TestCase):
+    def test_catalog_reuses_hash_and_stops_collector_before_returning(self):
+        self.share_file()
+        token = self.pair()
+        with mock.patch.object(server_module, "_change_stamp", return_value=123), \
+             mock.patch.object(server_module.hashlib, "sha256", wraps=hashlib.sha256) as digest:
+            self.request("GET", "/api/catalog", token)
+            first = digest.call_count
+            self.request("GET", "/api/catalog", token)
+            self.assertLess(digest.call_count - first, first)
+        entered = threading.Event()
+        release = threading.Event()
+        def collect():
+            entered.set()
+            release.wait(5)
+        self.server._start_collector(collect)
+        self.assertTrue(entered.wait(2))
+        stopped = threading.Event()
+        thread = threading.Thread(target=lambda: (self.server.stop(), stopped.set()))
+        thread.start()
+        self.assertFalse(stopped.wait(0.1))
+        release.set()
+        thread.join(5)
+        self.assertTrue(stopped.is_set())
+    def test_slow_catalog_sends_heartbeat_before_hash_finishes(self):
+        self.share_file()
+        token = self.pair()
+        original = server_module._Handler._catalog_item
+        def slow(handler, shared, size):
+            time.sleep(2.5)
+            return original(handler, shared, size)
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.port, timeout=1.8)
+        self.addCleanup(connection.close)
+        with mock.patch.object(server_module._Handler, "_catalog_item", slow):
+            connection.request("GET", "/api/catalog", headers={"Authorization": f"Bearer {token}"})
+            response = connection.getresponse()
+            body = response.read()
+        self.assertEqual(response.status, 200)
+        self.assertEqual(len(json.loads(body)["tracks"]), 1)
+
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)

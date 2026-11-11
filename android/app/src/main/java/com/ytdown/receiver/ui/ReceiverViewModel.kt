@@ -94,7 +94,7 @@ class ReceiverViewModel(
                 delay(pollInterval)
                 continue
             }
-            val only = servers.singleOrNull()
+            val only = servers.filter { tokens.get(it.id) != null }.singleOrNull()
             if (autoConnect && only != null && tokens.get(only.id) != null) {
                 open(only)
                 return
@@ -185,7 +185,6 @@ class ReceiverViewModel(
             } catch (_: NotPairedException) {
                 if (request != generation) return
                 closeQueue()
-                tokens.remove(server.id)
                 _screen.value = Screen.Pair(server, message = PAIR_AGAIN)
                 return
             } catch (_: IOException) {

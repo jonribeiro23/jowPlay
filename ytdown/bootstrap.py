@@ -105,6 +105,10 @@ def run() -> int:
     playback = Playback(player, library.storage, tracks=library.tracks)
     extract_batch = build_extract_batch()
     sharing = PhoneSharing(lambda changed: create_share_server(changed, library))
+    try:
+        sharing.start()
+    except Exception as exc:
+        QMessageBox.warning(None, "Compartilhamento indisponível", str(exc))
     window = build_main_window(library, playback, extract_batch, sharing)
     if sys.platform == "win32":
         from ytdown.infrastructure.windows_taskbar import WindowsThumbnailControls
@@ -269,6 +273,13 @@ def build_main_window(library, playback, extract_batch, sharing):
     window.navigation.itemClicked.connect(lambda item, column: pages[PageId.SONGS].set_ids(None)
                                           if item is window.navigation._items[PageId.SONGS] else None)
     sharing.parent = window  # A janela de envio fica à frente da principal e sai junto com ela.
+    if hasattr(sharing, "show_pairing"):
+        from PySide6.QtWidgets import QToolButton
+        phone_button = QToolButton(window.side_pane)
+        phone_button.setText("Conectar celular")
+        phone_button.clicked.connect(sharing.show_pairing)
+        window.side_pane.layout().insertWidget(window.side_pane.layout().count() - 1, phone_button)
+        window.phone_button = phone_button
 
     window.background_dialogs = []
     window.background_jobs = []

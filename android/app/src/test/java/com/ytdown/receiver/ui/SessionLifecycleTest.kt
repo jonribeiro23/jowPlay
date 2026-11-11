@@ -72,4 +72,19 @@ class SessionLifecycleTest {
         assertTrue(calls.isEmpty())
         assertEquals("saved", tokens.token)
     }
+
+    @Test fun automaticallySelectsPairedPcAmongOtherDiscoveredPcs() = runTest(dispatcher) {
+        val selectiveTokens = object : PairingTokens {
+            override fun get(serverId: String) = if (serverId == original.id) "saved" else null
+            override fun save(serverId: String, token: String) {}
+            override fun remove(serverId: String) {}
+        }
+        val vm = ReceiverViewModel(object : ServerDiscovery {
+            override fun discover() = listOf(moved, Server("other", "Outro", "other", 1))
+        }, pc, selectiveTokens, DownloadAudio(pc, library), "phone", dispatcher, 100)
+        vm.searchLoop()
+        runCurrent()
+        assertEquals(moved, (vm.screen.value as Screen.Files).server)
+        vm.backToSearch()
+    }
 }
