@@ -5,3 +5,11 @@ build/
 .venv/
 __pycache__/
 *.zip
+
+# Configurações locais, credenciais e capturas de aparelhos.
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+docs/evidencias/

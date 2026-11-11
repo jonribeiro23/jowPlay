@@ -20,4 +20,4 @@ Os cinco arquivos recebidos foram copiados por `adb pull` exclusivamente da past
 | 03 | 83564 | `b5074ee87d838d84cdea12691d9dbf66f1b655bf5b87660e7ff39761039fb489` |
 | 04 | 99558 | `a4f2d02f9e33c8504bac723122aaf62203b55f276c0976e3a412d044828f9d4e` |
 
-Permanecem no aparelho os cinco arquivos `Music/ytDown/jow55-226a7f72-*`, suas associações e pareamento de teste. Uma primeira tentativa `jow55-9b69f3c9` também baixou cinco arquivos e criou pareamento e associações; seu servidor foi encerrado após a automação aguardar incorretamente a galeria imediatamente na reabertura. Nenhum desses dados foi removido. Os originais e cópias da segunda tentativa ficaram em pastas temporárias `jow55-226a7f72-*` no PC; cópia do APK instalado em `%TEMP%/jow55-installed.apk`.
+Os downloads e associações dos testes permaneceram no aparelho após a validação.

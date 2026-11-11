@@ -112,21 +112,20 @@ Antes de alterar um arquivo, o app guarda uma cópia do original em `.ytdown-rec
 
 Selecione as faixas e pressione Delete ou escolha **Excluir da biblioteca**. Depois da confirmação, os arquivos vão para a Lixeira do Windows e as faixas saem da biblioteca, da fila e das playlists. Restaurar um arquivo da Lixeira não o devolve à biblioteca: importe-o de novo.
 
-### Enviar para o celular
+### Biblioteca no celular
 
-O app para Android recebe os áudios pela rede local, sem cabo e sem internet.
+O app para Android acessa as faixas da biblioteca do PC pela rede local.
 
-1. Instale o `ytDown-celular.apk` no celular (Android 10 ou mais recente). Pelo cabo, com a depuração USB ativa: `adb install -r ytDown-celular.apk`. Em celulares Xiaomi, ligue também **Instalar via USB** nas opções do desenvolvedor.
-2. Conecte o celular ao Wi-Fi da mesma rede do PC.
-3. No PC, escolha o que enviar: os áudios da última extração (página Extrair), faixas selecionadas em qualquer lista (menu de contexto), um álbum inteiro (**Enviar álbum para o celular**, no detalhe do álbum) ou uma playlist (botão na página da playlist ou menu da playlist na árvore). Se o Windows perguntar, permita o acesso em redes privadas.
-4. Abra o app no celular e escolha o PC. Na primeira vez, digite o código de 6 dígitos mostrado na janela do PC.
-5. Toque em **Baixar**. O áudio fica em `Música/ytDown`, com nome, autor, álbum e capa, e aparece nos players do celular.
+1. Instale o `ytDown-celular.apk` no celular (Android 10 ou mais recente).
+2. Conecte o celular e o PC à mesma rede Wi-Fi confiável e abra o ytDown nos dois aparelhos. Se o Windows perguntar, permita o acesso em redes privadas.
+3. No primeiro acesso, clique em **Conectar celular** no PC, escolha o computador no app Android e informe o código de pareamento. Depois disso, o celular procura automaticamente um PC já pareado; se houver mais de um, escolha na lista.
+4. A galeria exibe capa, título, artista e o estado de cada faixa. Toque em **Fazer Download** para baixá-la; pedidos simultâneos entram em fila. As faixas concluídas aparecem como **Sincronizado** e ficam em `Música/ytDown`.
 
-Novos envios entram na mesma lista mesmo após fechar a janela "Enviar para o celular". O servidor continua ativo até parar o compartilhamento pelo botão ou encerrar o ytDown no PC. O celular mostra o estado da conexão e tenta reconectar automaticamente após uma queda, inclusive se o endereço do PC mudar; o pareamento é preservado. Faixas indisponíveis são deixadas de fora, com aviso.
+O serviço permanece ativo enquanto o ytDown estiver aberto no PC. Após uma queda de rede, o Android tenta reencontrar o mesmo PC e preserva o pareamento. A fila de downloads é mantida durante a sessão do app e não sobrevive ao encerramento do processo.
 
-Se o celular não encontrar o PC, digite no app o endereço mostrado na janela. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, desative o "isolamento de AP" (ou "isolamento de clientes") no roteador, ou use uma rede que não seja a de convidados.
+Se o celular não encontrar o PC, informe no app o endereço mostrado em **Conectar celular**. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, verifique o isolamento de clientes ou use uma rede que permita essa comunicação.
 
-**Segurança:** o celular só consegue baixar os áudios que você enviou, nunca outros arquivos do PC, e só depois de parear. A transferência não é criptografada: use em redes de confiança. Para desfazer todos os pareamentos, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
+**Segurança:** o celular precisa estar pareado para acessar a biblioteca disponibilizada. A comunicação não é criptografada e não autentica o servidor; use uma rede confiável. Para desfazer os pareamentos no PC, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
 
 ## Quando parar de funcionar
 
