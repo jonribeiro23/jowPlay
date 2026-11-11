@@ -51,6 +51,17 @@ private class FakeLibrary : AudioLibrary {
 
 class DownloadAudioTest {
     @Test
+    fun cancellationBeforePublicationDiscardsPartialFile() {
+        val library = FakeLibrary()
+        var checks = 0
+        assertThrows(kotlinx.coroutines.CancellationException::class.java) {
+            DownloadAudio(FakePc(), library)(SERVER, "token", RemoteFile("1", "a.mp3", 5), {
+                if (++checks == 2) throw kotlinx.coroutines.CancellationException()
+            }) {}
+        }
+        assertTrue(library.saved.isEmpty())
+    }
+    @Test
     fun acceptsMatchingSha256() {
         val library = FakeLibrary()
         val hash = java.security.MessageDigest.getInstance("SHA-256").digest(AUDIO)

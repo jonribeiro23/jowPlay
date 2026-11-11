@@ -3,6 +3,7 @@ package com.ytdown.receiver.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.PaddingValues
@@ -87,8 +88,8 @@ private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: Receiver
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (cover != null) Image(cover!!.asImageBitmap(), contentDescription = "Capa", modifier = Modifier.size(56.dp))
-                else Text("♫", modifier = Modifier.size(56.dp), style = MaterialTheme.typography.headlineMedium)
+                if (cover != null) Image(cover!!.asImageBitmap(), contentDescription = "Fazer Download", modifier = Modifier.size(56.dp).clickable(enabled = connected, onClick = onDownload))
+                else Text("♫", modifier = Modifier.size(56.dp).clickable(enabled = connected, onClick = onDownload), style = MaterialTheme.typography.headlineMedium)
                 Column {
                     Text(file.title, style = MaterialTheme.typography.titleMedium)
                     Text(file.artist.ifBlank { "Artista desconhecido" }, style = MaterialTheme.typography.bodySmall)
@@ -96,6 +97,7 @@ private fun FileCard(file: RemoteFile, screen: Screen.Files, viewModel: Receiver
             }
             Text(formatSize(file.size), style = MaterialTheme.typography.bodySmall)
             when (transfer) {
+                Transfer.Queued -> Text("Download na fila")
                 is Transfer.Running -> LinearProgressIndicator(
                     progress = { transfer.progress },
                     modifier = Modifier.fillMaxWidth(),

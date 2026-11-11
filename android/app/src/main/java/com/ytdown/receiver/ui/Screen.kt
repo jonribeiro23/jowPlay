@@ -5,6 +5,7 @@ import com.ytdown.receiver.domain.model.Server
 
 /** Situação do download de um arquivo. */
 sealed interface Transfer {
+    data object Queued : Transfer
     data class Running(val progress: Float) : Transfer
     data object Saved : Transfer
     data class Failed(val message: String) : Transfer

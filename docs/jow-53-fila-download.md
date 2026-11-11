@@ -1,0 +1,9 @@
+# Fila de downloads Android
+
+O toque em Fazer Download ou na capa acrescenta a faixa à fila da sessão. O item em espera mostra “Download na fila”; um consumidor executa as transferências na ordem de entrada, uma por vez. Toques repetidos para o mesmo PC, faixa, revisão e hash enquanto aguardam ou estão em andamento não criam outra transferência. Uma revisão diferente é uma solicitação distinta; antes de começar, o catálogo atual é conferido. Uma faixa alterada ou removida precisa ser solicitada novamente.
+
+Uma falha não bloqueia os próximos itens e pode ser repetida. Enquanto o PC está desconectado, os itens aguardam a reconexão; o endereço redescoberto é utilizado na próxima transferência. A troca de PC, a perda do pareamento e a destruição do ViewModel cancelam a fila. A fila fica em memória: não sobrevive ao encerramento do processo e não é um serviço de download em segundo plano. Uma leitura de rede bloqueada pode levar até o timeout para terminar; o cancelamento é conferido antes de gravar cada bloco e antes de concluir a transferência.
+
+O arquivo permanece pendente no MediaStore durante a escrita; falhas e cancelamentos detectados removem o item parcial. Tamanho e, quando disponível, SHA-256 são conferidos antes da publicação. O estado sincronizado exige associação e verificação local de revisão, tamanho e hash; servidores antigos sem revisão/hash ainda permitem download, mas não podem comprovar sincronização. Nomes recebem UUID e não substituem arquivos existentes. Em interrupção abrupta do processo, a limpeza de itens pendentes fica sujeita ao Android.
+
+Validação: `gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest`. Os testes instrumentados de MediaStore usam nomes e identidades exclusivos e removem suas próprias associações e arquivos. Não executar testes que limpem dados do aplicativo no aparelho pessoal.

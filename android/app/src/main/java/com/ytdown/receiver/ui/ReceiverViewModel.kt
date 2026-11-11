@@ -27,6 +27,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.ensureActive
 import java.io.IOException
 import kotlin.coroutines.coroutineContext
 
@@ -58,6 +63,20 @@ class ReceiverViewModel(
     private var autoConnect = true
     private var filesJob: Job? = null
     private var generation = 0L
+    private data class DownloadKey(val serverId: String, val fileId: String, val revision: String?, val hash: String?)
+    private data class DownloadRequest(val key: DownloadKey, val file: RemoteFile)
+    private var queue = Channel<DownloadRequest>(Channel.UNLIMITED)
+    private val pending = mutableSetOf<DownloadKey>()
+    private var worker: Job? = null
+    private val transferMutex = Mutex()
+
+    private fun closeQueue() {
+        queue.close()
+        worker?.cancel()
+        worker = null
+        pending.clear()
+        queue = Channel(Channel.UNLIMITED)
+    }
 
     // --- busca
 
@@ -86,6 +105,7 @@ class ReceiverViewModel(
     }
 
     fun open(server: Server) {
+        closeQueue()
         filesJob?.cancel()
         generation++
         if (tokens.get(server.id) != null) startFiles(server) else _screen.value = Screen.Pair(server)
@@ -105,6 +125,7 @@ class ReceiverViewModel(
     }
 
     fun backToSearch() {
+        closeQueue()
         generation++
         filesJob?.cancel()
         autoConnect = false
@@ -154,10 +175,16 @@ class ReceiverViewModel(
                     files to files.filter { downloadAudio.isSynced(server, it) }.map { it.id }.toSet()
                 }
                 if (request != generation) return
-                updateFiles { it.copy(server = server, files = files, synced = synced,
-                    transfers = it.transfers.filterValues { transfer -> transfer !is Transfer.Saved }, connection = ConnectionState.CONNECTED) }
+                updateFiles { state -> state.copy(server = server, files = files, synced = synced,
+                    transfers = state.transfers.filter { (id, transfer) ->
+                        val old = state.files.firstOrNull { it.id == id }
+                        val fresh = files.firstOrNull { it.id == id }
+                        transfer !is Transfer.Saved && old != null && fresh != null &&
+                            old.revision == fresh.revision && old.sha256 == fresh.sha256
+                    }, connection = ConnectionState.CONNECTED) }
             } catch (_: NotPairedException) {
                 if (request != generation) return
+                closeQueue()
                 tokens.remove(server.id)
                 _screen.value = Screen.Pair(server, message = PAIR_AGAIN)
                 return
@@ -175,14 +202,45 @@ class ReceiverViewModel(
     }
 
     fun download(server: Server, file: RemoteFile) {
-        val token = tokens.get(server.id) ?: return
-        val request = generation
-        setTransfer(file, Transfer.Running(0f))
-        viewModelScope.launch {
+        val current = _screen.value as? Screen.Files ?: return
+        if (current.server.id != server.id || tokens.get(server.id) == null) return
+        val key = DownloadKey(server.id, file.id, file.revision, file.sha256)
+        if (!pending.add(key)) return
+        setTransfer(file, Transfer.Queued)
+        queue.trySend(DownloadRequest(key, file))
+        if (worker?.isActive == true) return
+        val requestGeneration = generation
+        val requests = queue
+        worker = viewModelScope.launch {
+            for (item in requests) {
+                try {
+                    val available = screen.first { state ->
+                        state !is Screen.Files || state.server.id != item.key.serverId || state.connection == ConnectionState.CONNECTED
+                    } as? Screen.Files ?: break
+                    if (requestGeneration != generation || available.server.id != item.key.serverId) break
+                    val latest = available.files.firstOrNull { it.id == item.file.id }
+                    if (latest == null || latest.revision != item.file.revision || latest.sha256 != item.file.sha256) {
+                        setTransfer(item.file, Transfer.Failed("A faixa mudou no PC. Tente de novo."))
+                        continue
+                    }
+                    val token = tokens.get(item.key.serverId) ?: break
+                    transferMutex.withLock {
+                        if (requestGeneration == generation) performDownload(available.server, item.file, token, requestGeneration)
+                    }
+                } finally {
+                    if (requestGeneration == generation) pending.remove(item.key)
+                }
+            }
+        }
+    }
+
+    private suspend fun performDownload(server: Server, file: RemoteFile, token: String, request: Long) {
+            setTransfer(file, Transfer.Running(0f))
             var lastUpdate = 0L
             val result = try {
                 withContext(io) {
-                    downloadAudio(server, token, file) { progress ->
+                    val context = coroutineContext
+                    downloadAudio(server, token, file, { context.ensureActive() }) { progress ->
                         val now = System.currentTimeMillis()
                         if (now - lastUpdate > PROGRESS_INTERVAL_MS) {
                             lastUpdate = now
@@ -199,7 +257,11 @@ class ReceiverViewModel(
                 Transfer.Failed(DOWNLOAD_FAILED)
             }
             if (request == generation) setTransfer(file, result)
-        }
+    }
+
+    override fun onCleared() {
+        closeQueue()
+        super.onCleared()
     }
 
     suspend fun cover(server: Server, file: RemoteFile): android.graphics.Bitmap? {
@@ -229,7 +291,11 @@ class ReceiverViewModel(
     }
 
     private fun setTransfer(file: RemoteFile, transfer: Transfer) {
-        updateFiles { it.copy(transfers = it.transfers + (file.id to transfer)) }
+        updateFiles { state ->
+            val current = state.files.firstOrNull { it.id == file.id }
+            if (current == null || current.revision != file.revision || current.sha256 != file.sha256) state
+            else state.copy(transfers = state.transfers + (file.id to transfer))
+        }
     }
 
     companion object {
