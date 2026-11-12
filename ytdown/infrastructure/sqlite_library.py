@@ -261,7 +261,7 @@ class SqliteTrackRepository:
         latest = max((number for number, _ in migrations), default=0)
         if current > latest:
             raise LibraryError(
-                "A biblioteca foi criada por uma versão mais nova do ytDown. Atualize o app para abri-la."
+                "A biblioteca foi criada por uma versão mais nova do jowPlay. Atualize o app para abri-la."
             )
         for number, script in sorted(migrations):
             if number > current:

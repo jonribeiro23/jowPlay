@@ -33,7 +33,7 @@ fun SearchScreen(screen: Screen.Search, viewModel: ReceiverViewModel) {
     WhileResumed("search") { viewModel.searchLoop() }
     var address by rememberSaveable { mutableStateOf("") }
 
-    AppScaffold("ytDown") { padding ->
+    AppScaffold("jowPlay") { padding ->
         Column(
             Modifier
                 .padding(padding)
@@ -48,7 +48,7 @@ fun SearchScreen(screen: Screen.Search, viewModel: ReceiverViewModel) {
                     Text("Procurando na rede...", Modifier.padding(start = 12.dp))
                 }
                 Text(
-                    "No PC, extraia um áudio e clique em \"Enviar para o celular\". " +
+                    "Abra o jowPlay no PC. Para o primeiro pareamento, clique em \"Conectar celular\". " +
                         "O celular precisa estar no Wi-Fi da mesma rede.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -60,7 +60,7 @@ fun SearchScreen(screen: Screen.Search, viewModel: ReceiverViewModel) {
             }
 
             Text(
-                "Não encontrou o PC? Digite o endereço mostrado na janela \"Enviar para o celular\".",
+                "Não encontrou o PC? Digite o endereço mostrado na janela \"Conectar celular\".",
                 Modifier.padding(top = 16.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )

@@ -39,7 +39,7 @@ private const val POLL_INTERVAL_MS = 2_000L
 private const val PROGRESS_INTERVAL_MS = 100L
 
 private const val MANUAL_CONNECT_FAILED =
-    "Não foi possível conectar. Confira o endereço e se o ytDown está aberto no PC."
+    "Não foi possível conectar. Confira o endereço e se o jowPlay está aberto no PC."
 private const val WRONG_CODE = "Código incorreto. Confira o código na tela do PC."
 private const val NO_CONNECTION = "Sem conexão com o PC. Tente de novo."
 private const val PAIR_AGAIN = "O PC pediu um novo pareamento."

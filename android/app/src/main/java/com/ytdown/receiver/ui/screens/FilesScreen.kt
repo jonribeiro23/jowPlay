@@ -49,7 +49,7 @@ fun FilesScreen(screen: Screen.Files, viewModel: ReceiverViewModel) {
 private fun StatusMessage(screen: Screen.Files) {
     val message = when {
         screen.connection == ConnectionState.CONNECTING -> "Conectando ao PC..."
-        screen.connection == ConnectionState.DISCONNECTED -> "Sem conexão com o PC. Verifique se o ytDown está aberto e se o celular está no Wi-Fi da mesma rede."
+        screen.connection == ConnectionState.DISCONNECTED -> "Sem conexão com o PC. Verifique se o jowPlay está aberto e se o celular está no Wi-Fi da mesma rede."
         screen.files.isEmpty() -> "Nenhum áudio disponível. No PC, clique em \"Enviar para o celular\" depois de extrair um áudio."
         else -> null
     }

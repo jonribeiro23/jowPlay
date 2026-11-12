@@ -1,4 +1,4 @@
-﻿# Gera dist\ytDown-celular.apk. Precisa do JDK 17 e do Android SDK em %LOCALAPPDATA%\Android.
+﻿# Gera dist\jowPlay-celular.apk. Precisa do JDK 17 e do Android SDK em %LOCALAPPDATA%\Android.
 # Uso, na raiz do projeto: powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1
 param([switch]$Offline)
 $ErrorActionPreference = "Stop"
@@ -27,5 +27,5 @@ if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o APK." }
 
 $dist = Join-Path $root "dist"
 New-Item -ItemType Directory -Force $dist | Out-Null
-Copy-Item "app\build\outputs\apk\debug\app-debug.apk" (Join-Path $dist "ytDown-celular.apk") -Force
-Write-Host "Pronto: dist\ytDown-celular.apk"
+Copy-Item "app\build\outputs\apk\debug\app-debug.apk" (Join-Path $dist "jowPlay-celular.apk") -Force
+Write-Host "Pronto: dist\jowPlay-celular.apk"

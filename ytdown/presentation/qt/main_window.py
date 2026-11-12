@@ -28,7 +28,7 @@ from ytdown.presentation.qt.pages import PageId, PlaceholderPage
 from ytdown.presentation.qt.play_queue_pane import PlayQueuePane
 from ytdown.presentation.qt.transport_bar import TransportBar
 
-APP_TITLE = "ytDown"
+APP_TITLE = "jowPlay"
 MINIMUM_SIZE = (900, 560)
 DEFAULT_SIZE = (1200, 760)
 SPLITTER_SIZES = (200, 760, 240)  # Navegação, conteúdo, lista de reprodução.

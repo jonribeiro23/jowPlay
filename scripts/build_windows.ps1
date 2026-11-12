@@ -1,4 +1,4 @@
-﻿# Gera dist\ytDown\ytDown.exe usando a versão mais recente do yt-dlp.
+﻿# Gera dist\jowPlay\jowPlay.exe usando a versão mais recente do yt-dlp.
 # Uso, na raiz do projeto: powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1
 param([switch]$Offline)
 $ErrorActionPreference = "Stop"
@@ -21,9 +21,9 @@ if (-not $Offline) {
 & $python -m unittest discover -s tests -t .
 if ($LASTEXITCODE -ne 0) { throw "Os testes falharam." }
 
-# Com o app aberto, o PyInstaller apagaria parte de dist\ytDown e só então falharia.
-$running = Get-Process ytDown -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$root\dist\*" }
-if ($running) { throw "Feche o ytDown antes de gerar o executável: ele está aberto a partir da pasta dist." }
+# Com o app aberto, o PyInstaller apagaria parte de dist\jowPlay e só então falharia.
+$running = Get-Process jowPlay -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$root\dist\jowPlay\*" }
+if ($running) { throw "Feche o jowPlay antes de gerar o executável: ele está aberto a partir da pasta dist." }
 
 $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
 
@@ -36,7 +36,7 @@ $excludedModules = @(
 $excludeArgs = $excludedModules | ForEach-Object { "--exclude-module", $_ }
 
 # Caminhos absolutos: com --specpath, o PyInstaller resolve os relativos a partir de build\.
-& $python -m PyInstaller --noconfirm --clean --windowed --name ytDown `
+& $python -m PyInstaller --noconfirm --clean --windowed --name jowPlay `
     --specpath "$root\build" --workpath "$root\build" --distpath "$root\dist" `
     --icon "$root\assets\icon.ico" `
     --add-data "$root\assets\icon.ico;assets" `
@@ -47,7 +47,7 @@ $excludeArgs = $excludedModules | ForEach-Object { "--exclude-module", $_ }
     "$root\main.py"
 if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar o executável." }
 
-$app = "$root\dist\ytDown"
+$app = "$root\dist\jowPlay"
 $qt = "$app\_internal\PySide6"
 
 # Arquivos do Qt que o PyInstaller copia mesmo sem uso (medidos no spike, JOW-9).
@@ -69,7 +69,7 @@ Get-ChildItem "$qt\translations" -File -ErrorAction SilentlyContinue |
 
 # O que o app precisa para funcionar; sem isso, ele abriria sem ícones ou sem conseguir converter.
 $required = @(
-    "$app\ytDown.exe", "$app\_internal\ffmpeg\ffmpeg.exe", "$app\_internal\assets\theme\ytdown.qss",
+    "$app\jowPlay.exe", "$app\_internal\ffmpeg\ffmpeg.exe", "$app\_internal\assets\theme\ytdown.qss",
     "$app\_internal\assets\theme\icons\play.svg", "$qt\Qt6Svg.dll",
     "$qt\plugins\iconengines\qsvgicon.dll", "$qt\plugins\imageformats\qsvg.dll", "$qt\plugins\platforms\qwindows.dll",
     "$qt\plugins\multimedia\ffmpegmediaplugin.dll", "$qt\translations\qtbase_pt_BR.qm"
@@ -100,4 +100,4 @@ $versions = & $python -c "import PySide6, PySide6.QtCore as c; print(f'PySide6 {
 Set-Content -Path "$licenses\qt\VERSAO.txt" -Value $versions -Encoding UTF8
 
 $size = (Get-ChildItem $app -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
-Write-Host ("Pronto: dist\ytDown\ytDown.exe ({0:N1} MB)" -f $size)
+Write-Host ("Pronto: dist\jowPlay\jowPlay.exe ({0:N1} MB)" -f $size)

@@ -26,7 +26,7 @@ class HttpPcConnection : PcConnection {
         val port = address.trim().substringAfter(':', "").toIntOrNull() ?: DEFAULT_HTTP_PORT
         return request(Server("", "", host, port), "/api/info") { connection ->
             val server = parseServer(JSONObject(readBody(connection)), host)
-            server?.copy(port = port) ?: throw IOException("Não é um ytDown")
+            server?.copy(port = port) ?: throw IOException("Não é um jowPlay")
         }
     }
 

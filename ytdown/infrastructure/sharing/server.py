@@ -377,7 +377,7 @@ class LocalShareServer:
             self.stop()
             raise ShareError(
                 "Não foi possível iniciar o compartilhamento. "
-                f"Verifique se o ytDown já está aberto em outra janela. ({exc})"
+                f"Verifique se o jowPlay já está aberto em outra janela. ({exc})"
             ) from exc
         for target in (self._http.serve_forever, self._answer_discovery):
             thread = threading.Thread(target=target, daemon=True)

@@ -29,7 +29,7 @@ from ytdown.infrastructure.tags import MutagenTagWriter
 from ytdown.infrastructure.windows_shell import music_folder
 from ytdown.infrastructure.youtube import YtDlpDownloader
 
-APP_ID = "ytDown.Player"  # Agrupa as janelas do app na barra de tarefas, com o ícone certo.
+APP_ID = "jowPlay.Player"  # Agrupa as janelas do app na barra de tarefas, com o ícone certo.
 LIBRARY_FOLDER_NAME = "ytDown"  # Dentro da pasta Música do usuário.
 
 
@@ -92,14 +92,14 @@ def run() -> int:
 
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     app = QApplication(sys.argv)
-    app.setApplicationName("ytDown")
+    app.setApplicationName("jowPlay")
     install_translations(app)
     app.setWindowIcon(QIcon(str(asset("icon.ico"))))
     apply_theme(app, asset("theme"))
     try:
         library = build_library()
     except LibraryError as exc:  # Ex.: biblioteca criada por uma versão mais nova do app.
-        QMessageBox.critical(None, "ytDown", str(exc))
+        QMessageBox.critical(None, "jowPlay", str(exc))
         return 1
     player = QtAudioPlayer(app)
     playback = Playback(player, library.storage, tracks=library.tracks)

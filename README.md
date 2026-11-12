@@ -1,13 +1,13 @@
-# ytDown
+# jowPlay
 
 Aplicativo para Windows 10 e 11 que extrai o áudio de vídeos do YouTube, guarda tudo numa biblioteca organizada e toca as músicas num player inspirado no Windows Media Player 7. Um app para Android recebe os áudios pela rede local.
 
 ## Instalação
 
-1. Baixe o `ytDown-windows.zip` do Release e extraia o conteúdo para uma pasta.
-2. Abra `ytDown\ytDown.exe`. Não é preciso instalar Python nem ffmpeg.
+1. Baixe o `jowPlay-windows.zip` do Release e extraia o conteúdo para uma pasta.
+2. Abra `jowPlay\jowPlay.exe`. Não é preciso instalar Python nem ffmpeg.
 
-O `ytDown.exe` precisa da pasta `_internal` ao lado dele: para mover o app, leve a pasta `ytDown` inteira. Como o executável não tem assinatura digital, o Windows SmartScreen pode avisar "O Windows protegeu o computador" na primeira execução; clique em **Mais informações** e em **Executar assim mesmo**.
+O `jowPlay.exe` precisa da pasta `_internal` ao lado dele: para mover o app, leve a pasta `jowPlay` inteira. Os releases anteriores usam o nome ytDown. Como o executável não tem assinatura digital, o Windows SmartScreen pode avisar "O Windows protegeu o computador" na primeira execução; clique em **Mais informações** e em **Executar assim mesmo**.
 
 ## Como usar
 
@@ -88,12 +88,12 @@ Em qualquer lista de faixas, selecione uma ou mais linhas (Ctrl ou Shift) e use 
 - **Barra de reprodução:** tocar/pausar, anterior, próxima, aleatório, repetir (desligado → todas → uma), posição, volume e mudo. Anterior recomeça a faixa depois de 3 segundos; antes disso, volta para a faixa anterior.
 - **Fila** (à direita): a faixa atual aparece em negrito. Arraste para reordenar, dê duplo clique para tocar, Delete remove as selecionadas e **Limpar** esvazia. Arraste faixas de Músicas para a fila para acrescentá-las. **Salvar playlist** guarda a fila na ordem exibida.
 - **Em reprodução:** capa grande, informações da faixa e as próximas da fila. **Modo compacto** abre uma janela pequena, sempre no topo, com os controles.
-- **Miniatura na barra de tarefas:** ao passar o mouse sobre o ícone do ytDown, aparecem os botões anterior, tocar/pausar e próxima.
+- **Miniatura na barra de tarefas:** ao passar o mouse sobre o ícone do jowPlay, aparecem os botões anterior, tocar/pausar e próxima.
 - **Atalhos** na janela principal: Espaço tocar/pausar; Ctrl+Esquerda e Ctrl+Direita faixa anterior ou próxima; Ctrl+Cima e Ctrl+Baixo volume; Ctrl+M mudo; Ctrl+S aleatório; Ctrl+T repetição; Ctrl+L mostra ou esconde a fila; Ctrl+F busca; Alt+Enter propriedades. Os atalhos não atrapalham a digitação nos campos de texto. As teclas de mídia do teclado e o painel de mídia do Windows não são suportados.
 
 Uma reprodução é contada ao ouvir metade da faixa ou quatro minutos, o que vier primeiro; pausas e trechos pulados não contam.
 
-Ao fechar, o ytDown guarda volume, mudo, aleatório, repetição, fila, posição, tamanho da janela, larguras dos painéis, página e colunas. Na próxima abertura a faixa volta carregada, sem tocar: pressione Play para continuar.
+Ao fechar, o jowPlay guarda volume, mudo, aleatório, repetição, fila, posição, tamanho da janela, larguras dos painéis, página e colunas. Na próxima abertura a faixa volta carregada, sem tocar: pressione Play para continuar.
 
 ### Playlists
 
@@ -116,16 +116,16 @@ Selecione as faixas e pressione Delete ou escolha **Excluir da biblioteca**. Dep
 
 O app para Android acessa as faixas da biblioteca do PC pela rede local.
 
-1. Instale o `ytDown-celular.apk` no celular (Android 10 ou mais recente).
-2. Conecte o celular e o PC à mesma rede Wi-Fi confiável e abra o ytDown nos dois aparelhos. Se o Windows perguntar, permita o acesso em redes privadas.
+1. Instale o `jowPlay-celular.apk` no celular (Android 10 ou mais recente).
+2. Conecte o celular e o PC à mesma rede Wi-Fi confiável e abra o jowPlay nos dois aparelhos. Se o Windows perguntar, permita o acesso em redes privadas.
 3. No primeiro acesso, clique em **Conectar celular** no PC, escolha o computador no app Android e informe o código de pareamento. Depois disso, o celular procura automaticamente um PC já pareado; se houver mais de um, escolha na lista.
 4. A galeria exibe capa, título, artista e o estado de cada faixa. Toque em **Fazer Download** para baixá-la; pedidos simultâneos entram em fila. As faixas concluídas aparecem como **Sincronizado** e ficam em `Música/ytDown`.
 
-O serviço permanece ativo enquanto o ytDown estiver aberto no PC. Após uma queda de rede, o Android tenta reencontrar o mesmo PC e preserva o pareamento. A fila de downloads é mantida durante a sessão do app e não sobrevive ao encerramento do processo.
+O serviço permanece ativo enquanto o jowPlay estiver aberto no PC. Após uma queda de rede, o Android tenta reencontrar o mesmo PC e preserva o pareamento. A fila de downloads é mantida durante a sessão do app e não sobrevive ao encerramento do processo.
 
 Se o celular não encontrar o PC, informe no app o endereço mostrado em **Conectar celular**. Alguns roteadores bloqueiam a comunicação entre aparelhos; nesse caso, verifique o isolamento de clientes ou use uma rede que permita essa comunicação.
 
-**Segurança:** o celular precisa estar pareado para acessar a biblioteca disponibilizada. A comunicação não é criptografada e não autentica o servidor; use uma rede confiável. Para desfazer os pareamentos no PC, apague `%APPDATA%\ytDown\pairing.json` com o ytDown fechado.
+**Segurança:** o celular precisa estar pareado para acessar a biblioteca disponibilizada. A comunicação não é criptografada e não autentica o servidor; use uma rede confiável. Para desfazer os pareamentos no PC, apague `%APPDATA%\ytDown\pairing.json` com o jowPlay fechado.
 
 ## Quando parar de funcionar
 
@@ -144,8 +144,8 @@ Se o Node.js ou o Deno estiver instalado, o `yt-dlp` pode usá-lo para lidar com
 ```powershell
 .\.venv\Scripts\python.exe main.py                                  # executa sem empacotar
 .\.venv\Scripts\python.exe -m unittest discover -s tests -t .       # testes (HTTP local, sem serviços externos)
-powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\ytDown
-powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\ytDown-celular.apk
+powershell -ExecutionPolicy Bypass -File scripts\build_windows.ps1  # gera dist\jowPlay
+powershell -ExecutionPolicy Bypass -File scripts\build_android.ps1  # gera dist\jowPlay-celular.apk
 ```
 
 O app para Android precisa do JDK 17 e do Android SDK em `%LOCALAPPDATA%\Android`. Para usar somente dependências já instaladas ou em cache, acrescente `-Offline` aos scripts: o Windows não executa pip, e o Gradle usa `--offline` (o wrapper do Gradle precisa já estar no cache). O plano e as decisões da 2.0 estão em [`docs/arquitetura-2.0.md`](docs/arquitetura-2.0.md), e o roteiro de validação do lançamento em [`docs/jow-49-validacao.md`](docs/jow-49-validacao.md).
@@ -208,15 +208,15 @@ O HTTP usa a porta 47821. O código muda após cada pareamento e após 5 tentati
 
 O app pronto não fica no repositório (o `ffmpeg.exe` tem mais de 100 MB). Ele é publicado como anexo de um Release do GitHub:
 
-1. Feche o ytDown e gere o app: `scripts\build_windows.ps1` e, se o app do celular mudou, `scripts\build_android.ps1`.
-2. Compacte: `Compress-Archive dist\ytDown dist\ytDown-windows.zip -Force`.
-3. Publique: `gh release create vX.Y dist\ytDown-windows.zip dist\ytDown-celular.apk --title "ytDown X.Y"`.
+1. Feche o jowPlay e gere o app: `scripts\build_windows.ps1` e, se o app do celular mudou, `scripts\build_android.ps1`.
+2. Compacte: `Compress-Archive dist\jowPlay dist\jowPlay-windows.zip -Force`.
+3. Publique: `gh release create vX.Y dist\jowPlay-windows.zip dist\jowPlay-celular.apk --title "jowPlay X.Y"`.
 
 ## Licenças de terceiros
 
-O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `scripts\build_windows.ps1` copia para `dist\ytDown\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
+O app inclui o [FFmpeg](https://ffmpeg.org), em uma versão compilada por [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) e licenciada sob a GPLv3. O `scripts\build_windows.ps1` copia para `dist\jowPlay\licencas\ffmpeg` a licença e o `README.txt` dessa versão, que indicam o código-fonte exato utilizado. Quem distribuir o app deve manter essa pasta junto.
 
-A interface usa o [Qt](https://www.qt.io) por meio do [PySide6](https://doc.qt.io/qtforpython-6/) (Qt for Python), sob a LGPLv3. O script copia para `dist\ytDown\licencas\qt` o texto da LGPLv3 (e da GPLv3, que ela complementa), a versão usada e onde obter o código-fonte; esses arquivos ficam em `licencas\qt` no repositório. As bibliotecas do Qt vão sem modificações, como DLLs separadas na pasta `_internal`, e podem ser substituídas por outra versão compatível.
+A interface usa o [Qt](https://www.qt.io) por meio do [PySide6](https://doc.qt.io/qtforpython-6/) (Qt for Python), sob a LGPLv3. O script copia para `dist\jowPlay\licencas\qt` o texto da LGPLv3 (e da GPLv3, que ela complementa), a versão usada e onde obter o código-fonte; esses arquivos ficam em `licencas\qt` no repositório. As bibliotecas do Qt vão sem modificações, como DLLs separadas na pasta `_internal`, e podem ser substituídas por outra versão compatível.
 
 Também são usados [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [mutagen](https://github.com/quodlibet/mutagen) (GPLv2+), [Pillow](https://python-pillow.org) (licença MIT-CMU) e Python (licença PSF).
 

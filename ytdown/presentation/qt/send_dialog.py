@@ -27,7 +27,7 @@ ShareServerFactory = Callable[[Callable[[], None]], ShareServer]
 TITLE = "Enviar para o celular"
 STEPS = (
     "1. Conecte o celular ao Wi-Fi da mesma rede deste PC.\n"
-    "2. Abra o app ytDown no celular e escolha este PC.\n"
+    "2. Abra o app jowPlay no celular e escolha este PC.\n"
     "3. Na primeira vez, digite o código abaixo no celular.\n"
     "4. Toque em Baixar no áudio que aparecer na lista."
 )
